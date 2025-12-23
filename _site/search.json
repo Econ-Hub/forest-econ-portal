@@ -1,0 +1,72 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Home",
+    "section": "",
+    "text": "This site hosts internal forecasts and exploratory analysis for the economics group.\nContent is updated regularly and intended for internal use."
+  },
+  {
+    "objectID": "index.html#forest-economics-forecast-portal",
+    "href": "index.html#forest-economics-forecast-portal",
+    "title": "Home",
+    "section": "",
+    "text": "This site hosts internal forecasts and exploratory analysis for the economics group.\nContent is updated regularly and intended for internal use."
+  },
+  {
+    "objectID": "index.html#forecast-dashboards",
+    "href": "index.html#forecast-dashboards",
+    "title": "Home",
+    "section": "Forecast dashboards",
+    "text": "Forecast dashboards\n\nNA Starts\nCanadian housing starts (SAAR) by dwelling type, including:\n\nlast 5 years of history\nsimple random walk with drift forecast\ninteractive chart for total starts"
+  },
+  {
+    "objectID": "index.html#notes-on-methodology",
+    "href": "index.html#notes-on-methodology",
+    "title": "Home",
+    "section": "Notes on methodology",
+    "text": "Notes on methodology\nForecasts on this site are intentionally lightweight and transparent. Where applicable, we use simple time-series benchmarks (e.g. random walk variants) to provide context rather than precise prediction."
+  },
+  {
+    "objectID": "index.html#site-navigation",
+    "href": "index.html#site-navigation",
+    "title": "Home",
+    "section": "Site navigation",
+    "text": "Site navigation\n\nForecast pages are listed above\nBackground and ownership information is available on the About page"
+  },
+  {
+    "objectID": "about.html#about.qmd",
+    "href": "about.html#about.qmd",
+    "title": "Forest Economics Portal",
+    "section": "about.qmd",
+    "text": "about.qmd"
+  },
+  {
+    "objectID": "about.html#markdown",
+    "href": "about.html#markdown",
+    "title": "Forest Economics Portal",
+    "section": "```markdown",
+    "text": "```markdown"
+  },
+  {
+    "objectID": "about.html#title-about",
+    "href": "about.html#title-about",
+    "title": "Forest Economics Portal",
+    "section": "title: “About”",
+    "text": "title: “About”\nOwner: TPB Economics Team\nThis site is a static website built with Quarto and deployed from GitHub. Access control is applied at the hosting layer (Netlify password protection - free for test versions)."
+  },
+  {
+    "objectID": "forecasts-na-starts.html",
+    "href": "forecasts-na-starts.html",
+    "title": "NA Starts",
+    "section": "",
+    "text": "Includes a random walk forecast with drift."
+  },
+  {
+    "objectID": "forecasts-na-starts.html#canada-housing-starts-saar-totals",
+    "href": "forecasts-na-starts.html#canada-housing-starts-saar-totals",
+    "title": "NA Starts",
+    "section": "",
+    "text": "Includes a random walk forecast with drift."
+  }
+]
