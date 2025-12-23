@@ -1,0 +1,33 @@
+---
+title: "Home"
+---
+
+## Economics Forecast Portal
+
+This site hosts internal forecasts and exploratory analysis for the economics group.  
+Content is updated regularly and intended for internal use.
+
+---
+
+## Forecast dashboards
+
+- **[NA Starts](forecasts-na-starts.qmd)**  
+  Canadian housing starts (SAAR) by dwelling type, including:
+  - last 5 years of history
+  - simple random walk with drift forecast
+  - interactive chart for total starts
+
+---
+
+## Notes on methodology
+
+Forecasts on this site are intentionally lightweight and transparent.
+Where applicable, we use simple time-series benchmarks (e.g. random walk variants)
+to provide context rather than precise prediction.
+
+---
+
+## Site navigation
+
+- Forecast pages are listed above
+- Background and ownership information is available on the **About** page

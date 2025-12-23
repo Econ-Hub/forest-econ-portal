@@ -1,0 +1,14 @@
+# R
+.Rhistory
+.RData
+.Rproj.user/
+
+# Quarto
+/_site/
+.quarto/
+
+# Optional: if you later generate larger data outputs
+# data/*.rds
+
+/.quarto/
+**/*.quarto_ipynb

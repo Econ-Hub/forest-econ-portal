@@ -1,0 +1,23 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "Forest Economics Portal"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: forecasts-na-starts.qmd
+        text: NA Starts
+      - href: about.qmd
+        text: About
+
+execute:
+  enabled: true
+  freeze: false  # Prevents automatic caching/freezing
+
+format:
+  html:
+    toc: true
+    theme: cosmo

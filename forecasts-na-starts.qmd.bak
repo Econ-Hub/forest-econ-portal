@@ -1,0 +1,166 @@
+text---
+title: "NA Starts"
+format:
+  html:
+    toc: true
+execute:
+  enabled: true
+  cache: false  # Optional: Disables caching for fresh evaluation
+---
+
+# Canada housing starts (SAAR) by dwelling type
+
+```{r}
+#| message: false
+#| warning: false
+#| echo: false
+
+library(rvest)
+library(tidyverse)
+library(lubridate)
+library(plotly)
+
+# Pull CMHC table
+url <- read_html("https://www03.cmhc-schl.gc.ca/hmip-pimh/en/TableMapChart/TableCategory?geographyType=Country&geographyId=1&categoryLevel1=New%20Housing%20Construction&categoryLevel2=Starts%20%28SAAR%29")
+
+starts <- url %>%
+  html_nodes(xpath='//*[@id="predefinedTable-data-area"]/div[6]/div/form/table') %>%
+  html_table(fill = TRUE) %>%
+  .[[1]] %>%
+  as.data.frame()
+
+# header row
+names(starts) <- as.character(unlist(starts[1, ]))
+starts <- starts[-1, , drop = FALSE]
+
+# fix blank header (Period col)
+names(starts)[is.na(names(starts)) | trimws(names(starts)) == ""] <- "ACTUAL_DATE"
+
+# pick cols defensively
+nm <- names(starts)
+pick_col <- function(patterns) {
+  hit <- nm[stringr::str_detect(tolower(nm), stringr::str_c(patterns, collapse="|"))]
+  if (length(hit) == 0) return(NA_character_)
+  hit[1]
+}
+
+cols <- c(
+  pick_col(c("^total$","total")),
+  pick_col(c("single")),
+  pick_col(c("semi")),
+  pick_col(c("\\brow\\b","row")),
+  pick_col(c("apartment","apt"))
+)
+cols <- cols[!is.na(cols)]
+stopifnot(length(cols) >= 2)
+
+# clean + parse
+CDN_starts <- starts %>%
+  dplyr::select(ACTUAL_DATE, dplyr::all_of(cols)) %>%
+  dplyr::mutate(
+    ACTUAL_DATE = stringr::str_trim(as.character(ACTUAL_DATE)),
+    ACTUAL_DATE = lubridate::parse_date_time(ACTUAL_DATE, orders = c("Y B","Y b"), tz = "UTC"),
+    ACTUAL_DATE = as.Date(ACTUAL_DATE)
+  ) %>%
+  dplyr::mutate(dplyr::across(-ACTUAL_DATE, ~ as.numeric(gsub(",", "", as.character(.x))))) %>%
+  dplyr::mutate(dplyr::across(-ACTUAL_DATE, ~ .x / 1000)) %>%
+  dplyr::arrange(ACTUAL_DATE)
+
+starts_long <- CDN_starts %>%
+  tidyr::pivot_longer(-ACTUAL_DATE, names_to = "type", values_to = "value") %>%
+  dplyr::filter(!is.na(ACTUAL_DATE), !is.na(value)) %>%
+  dplyr::arrange(type, ACTUAL_DATE)
+
+# RW with drift (simple)
+last_date   <- max(starts_long$ACTUAL_DATE, na.rm = TRUE)
+plot_start  <- last_date %m-% years(5)  %m+% months(1)
+drift_start <- last_date %m-% years(10) %m+% months(1)
+h_forecast  <- 24
+
+starts_plot  <- starts_long %>% dplyr::filter(ACTUAL_DATE >= plot_start)
+starts_drift <- starts_long %>% dplyr::filter(ACTUAL_DATE >= drift_start)
+
+anchors <- starts_long %>%
+  dplyr::group_by(type) %>%
+  dplyr::arrange(ACTUAL_DATE) %>%
+  dplyr::summarise(anchor_date = dplyr::last(ACTUAL_DATE),
+                   anchor_val  = dplyr::last(value),
+                   .groups="drop")
+
+drifts <- starts_drift %>%
+  dplyr::group_by(type) %>%
+  dplyr::arrange(ACTUAL_DATE) %>%
+  dplyr::summarise(
+    drift = {
+      d <- stats::median(diff(value), na.rm = TRUE)
+      if (is.na(d)) 0 else d
+    },
+    .groups="drop"
+  )
+
+rw_drift <- anchors %>%
+  dplyr::left_join(drifts, by="type") %>%
+  dplyr::mutate(drift = dplyr::if_else(is.na(drift), 0, drift)) %>%
+  dplyr::mutate(forecast = purrr::pmap(list(anchor_date, anchor_val, drift), \(ad,av,dr){
+    tibble::tibble(
+      ACTUAL_DATE = seq.Date(from = ad %m+% months(1), by="month", length.out = h_forecast),
+      value = av + dr * (1:h_forecast)
+    )
+  })) %>%
+  dplyr::select(type, forecast) %>%
+  tidyr::unnest(forecast) %>%
+  dplyr::mutate(series = "RW+drift")
+
+plot_df <- dplyr::bind_rows(
+  starts_plot %>% dplyr::mutate(series="Actual"),
+  rw_drift
+)
+
+# Faceted plot
+print(
+  ggplot(plot_df, aes(ACTUAL_DATE, value, linetype = series)) +
+    geom_line(linewidth = 0.8) +
+    facet_wrap(~ type, scales = "free_y", ncol = 2) +
+    labs(
+      title = "Canadian Housing Starts (SAAR) by Type",
+      subtitle = "History: last 5 years. Forecast: random walk with drift (median drift over last 10 years).",
+      x = NULL,
+      y = "Starts (thousands, SAAR)"
+    ) +
+    theme_minimal(base_size = 12) +
+    theme(
+      legend.position = "bottom",
+      panel.grid.minor = element_blank(),
+      strip.text = element_text(face = "bold"),
+      plot.title.position = "plot"
+    ) +
+    guides(linetype = guide_legend(nrow = 1))
+)
+```
+
+## Canada Housing Starts (SAAR) Totals
++ Includes a random walk forecast with drift.
+```{r dynamic}
+#| message: false
+#| warning: false
+#| echo: false
+
+# Plotly total-only
+total_actual   <- starts_plot %>% dplyr::filter(type == "Total") %>% dplyr::arrange(ACTUAL_DATE)
+total_forecast <- rw_drift     %>% dplyr::filter(type == "Total") %>% dplyr::arrange(ACTUAL_DATE)
+
+p_total <- plot_ly() %>%
+  add_lines(data = total_actual, x = ~ACTUAL_DATE, y = ~value, name = "Actual",
+            line = list(width = 2)) %>%
+  add_lines(data = total_forecast, x = ~ACTUAL_DATE, y = ~value, name = "RW + drift",
+            line = list(dash = "dash", width = 2)) %>%
+  layout(
+    title = list(text = "Total Canadian Housing Starts (SAAR)<br><sup>Last 5 years + RW with drift</sup>"),
+    xaxis = list(title = ""),
+    yaxis = list(title = "Starts (thousands, SAAR)"),
+    legend = list(orientation = "h", x = 0, y = -0.25),
+    hovermode = "x unified"
+  )
+
+p_total
+```

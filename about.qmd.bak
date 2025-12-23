@@ -1,0 +1,14 @@
+
+---
+
+## `about.qmd`
+
+```markdown
+---
+title: "About"
+---
+
+Owner: TPB Economics Team
+
+This site is a static website built with Quarto and deployed from GitHub.
+Access control is applied at the hosting layer (Netlify password protection - free for early versions).
