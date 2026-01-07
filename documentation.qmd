@@ -1,0 +1,29 @@
+---
+title: "Documentation"
+---
+
+# Data Sources and Methods
+
+## Data Sources
+
+The primary data source for the **NA Starts** dashboard is the **Canada Mortgage and Housing Corporation (CMHC)**.
+
+- **Table:** New Housing Construction, Starts (SAAR)
+- **Geography:** Canada (Country Level)
+- **Data Frequency:** Monthly, Seasonally Adjusted Annual Rates (SAAR)
+
+The data is retrieved directly from the CMHC website.
+
+## Methodology
+
+The forecasts provided on this portal are intentionally lightweight and transparent benchmarks.
+
+### Forecast Model: Random Walk with Drift
+
+For each dwelling type (Single, Semi, Row, Apartment, and Total), we employ a **Random Walk with Drift** model.
+
+- **History:** The model considers the last 5 years of historical data for context.
+- **Drift Calculation:** The drift parameter is estimated as the median month-over-month change observed over the last 10 years.
+- **Projection:** Future values are projected by applying this constant drift to the most recent historical data point.
+
+This approach serves as a baseline to provide context rather than a precise predictive tool.
