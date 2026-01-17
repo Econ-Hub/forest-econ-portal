@@ -8,8 +8,12 @@ website:
     left:
       - href: index.qmd
         text: Home
-      - href: forecasts-na-starts.qmd
-        text: NA Starts
+      - text: Housing Forecasts
+        menu:
+          - href: forecasts-na-starts.qmd
+            text: NA Starts
+          - href: documentation.qmd
+            text: Documentation
       - href: about.qmd
         text: About
 
