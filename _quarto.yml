@@ -10,6 +10,8 @@ website:
         text: Home
       - href: forecasts-na-starts.qmd
         text: NA Starts
+      - href: water-security.qmd
+        text: Water Security
       - href: about.qmd
         text: About
 

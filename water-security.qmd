@@ -1,0 +1,116 @@
+  ---
+title: "West Boundary Water Security"
+author: "Your Name/Portfolio"
+format:
+dashboard:
+theme: yeti
+orientation: rows
+execute:
+echo: false
+warning: false
+message: false
+---
+
+```{r}
+#| include: false
+#| echo: false
+# 1. LOAD REQUIRED PACKAGES
+# Ensure you have installed these via: install.packages(c("tidyhydat", "bcdata", "sf", "bcmaps", "tidyverse", "plotly", "leaflet", "bslib"))
+library(tidyverse)
+library(plotly)
+library(leaflet)
+library(bslib)
+library(tidyhydat) 
+library(bcdata)    
+library(sf)
+
+# 2. AUTOMATED TELEMETRY INGESTION (SURFACE WATER)
+target_stations <- c("08NN003", "08NN026")
+
+# Fetch live data from ECCC hydrometric web service
+live_flow_data <- realtime_ws(
+  station_number = target_stations,
+  parameters = 47, 
+  start_date = Sys.Date() - 60,
+  end_date = Sys.Date()
+) %>%
+  mutate(Date = as.Date(Date)) %>%
+  group_by(STATION_NUMBER, Date) %>%
+  summarize(Daily_Mean_Flow = mean(Value, na.rm = TRUE), .groups = "drop")
+
+kettle_flow <- live_flow_data %>% filter(STATION_NUMBER == "08NN003")
+boundary_flow <- live_flow_data %>% filter(STATION_NUMBER == "08NN026")
+
+current_kettle_flow <- kettle_flow %>% filter(Date == max(Date)) %>% pull(Daily_Mean_Flow) %>% round(1)
+
+# 3. SPATIAL DATA INGESTION
+# Query ALR polygons from BC Data Catalogue
+# alr_query <- bcdc_query_geodata("alc-agricultural-land-reserve-polygons") %>%
+#   filter(BBOX(c(-119.0, 49.0, -118.7, 49.2))) %>% 
+#   collect()
+```
+
+
+
+<!-- # Real-Time Telemetry -->
+<!--  ```{r telemetry} -->
+
+<!-- #| content: valuebox -->
+<!-- #| title: "Current Flow: Kettle River (08NN013)" -->
+<!-- list( -->
+<!--   icon = "droplet-half", -->
+<!--   color = ifelse(current_kettle_flow < 20, "danger", "primary"), -->
+<!--   value = paste0(current_kettle_flow, " m³/s") -->
+<!-- ) -->
+
+
+<!-- #| content: valuebox -->
+<!-- #| title: "Live Data Source" -->
+<!-- list( -->
+<!--   icon = "cloud-arrow-down", -->
+<!--   color = "secondary", -->
+<!--   value = "ECCC Web Service" -->
+<!-- ) -->
+<!-- ``` -->
+
+
+
+# Kettle River - Last 30 Days Live Telemetry
+```{r last 30}
+#| echo: false
+
+plot_ly(kettle_flow, x = ~Date) %>%
+  add_lines(y = ~Daily_Mean_Flow, name = "Kettle River (Ferry)", line = list(color = "#1f77b4", width = 3)) %>%
+  add_lines(data = boundary_flow, y = ~Daily_Mean_Flow, name = "Boundary Creek (Midway)", line = list(color = "#7f7f7f", width = 2, dash = "dot")) %>%
+  layout(
+    xaxis = list(title = ""),
+    yaxis = list(title = "Discharge (m³/s)"),
+    hovermode = "x unified",
+    legend = list(orientation = 'h', x = 0.5, xanchor = 'center', y = -0.1)
+  )
+```
+
+
+<!-- # Spatial Planning -->
+
+<!-- ```{r spatial planning} -->
+
+<!-- leaflet() %>% -->
+<!--   addProviderTiles(providers$CartoDB.Positron) %>% -->
+<!--   setView(lng = -118.85, lat = 49.05, zoom = 11) %>% -->
+<!--   addPolygons(data = alr_query,  -->
+<!--               color = "#8c564b",  -->
+<!--               weight = 1,  -->
+<!--               fillOpacity = 0.2,  -->
+<!--               popup = ~paste("ALR Parcel ID:", ALC_DOCUMENT_ID)) %>% -->
+<!--   addLegend("bottomright",  -->
+<!--             colors = c("#8c564b"),  -->
+<!--             labels = c("ALR Boundaries (bcdata)"),  -->
+<!--             title = "Land Base") -->
+<!-- ``` -->
+
+# Methodology
+
++ Automated Hydrology: Current flow data is automatically retrieved from the ECCC real-time hydrometric API via the tidyhydat R package.
+
++ Spatial Data Integrity: Land classification (ALR parcels) is queried directly from the BC Data Catalogue API using the bcdata R package, ensuring models always use the most authoritative and up-to-date regional boundaries.

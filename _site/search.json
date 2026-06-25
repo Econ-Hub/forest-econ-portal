@@ -68,5 +68,12 @@
     "title": "NA Starts",
     "section": "",
     "text": "Includes a random walk forecast with drift."
+  },
+  {
+    "objectID": "water-security.html",
+    "href": "water-security.html",
+    "title": "West Boundary Water Security",
+    "section": "",
+    "text": "Kettle River - Last 30 Days Live Telemetry\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nMethodology\n\nAutomated Hydrology: Current flow data is automatically retrieved from the ECCC real-time hydrometric API via the tidyhydat R package.\nSpatial Data Integrity: Land classification (ALR parcels) is queried directly from the BC Data Catalogue API using the bcdata R package, ensuring models always use the most authoritative and up-to-date regional boundaries."
   }
 ]

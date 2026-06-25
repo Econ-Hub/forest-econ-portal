@@ -6,8 +6,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
+<meta name="author" content="Your Name/Portfolio">
 
-<title>NA Starts – Forest Economics Portal</title>
+<title>water-security – Forest Economics Portal</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -114,8 +115,12 @@ ul.task-list li input[type="checkbox"] {
 <span class="menu-text">Home</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link active" href="./forecasts-na-starts.html" aria-current="page"> 
+    <a class="nav-link" href="./forecasts-na-starts.html"> 
 <span class="menu-text">NA Starts</span></a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link active" href="./water-security.html" aria-current="page"> 
+<span class="menu-text">Water Security</span></a>
   </li>  
   <li class="nav-item">
     <a class="nav-link" href="./about.html"> 
@@ -137,10 +142,8 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#canada-housing-starts-saar-by-dwelling-type" id="toc-canada-housing-starts-saar-by-dwelling-type" class="nav-link active" data-scroll-target="#canada-housing-starts-saar-by-dwelling-type">Canada housing starts (SAAR) by dwelling type</a>
-  <ul class="collapse">
-  <li><a href="#canada-housing-starts-saar-totals" id="toc-canada-housing-starts-saar-totals" class="nav-link" data-scroll-target="#canada-housing-starts-saar-totals">Canada Housing Starts (SAAR) Totals</a></li>
-  </ul></li>
+  <li><a href="#kettle-river---last-30-days-live-telemetry" id="toc-kettle-river---last-30-days-live-telemetry" class="nav-link active" data-scroll-target="#kettle-river---last-30-days-live-telemetry">Kettle River - Last 30 Days Live Telemetry</a></li>
+  <li><a href="#methodology" id="toc-methodology" class="nav-link" data-scroll-target="#methodology">Methodology</a></li>
   </ul>
 </nav>
     </div>
@@ -149,13 +152,19 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">NA Starts</h1>
+<h1 class="title">West Boundary Water Security</h1>
 </div>
 
 
 
 <div class="quarto-title-meta">
 
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Your Name/Portfolio </p>
+          </div>
+  </div>
     
   
     
@@ -166,31 +175,55 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<section id="canada-housing-starts-saar-by-dwelling-type" class="level1">
-<h1>Canada housing starts (SAAR) by dwelling type</h1>
+<!-- # Real-Time Telemetry -->
+<!--  ```{r telemetry} -->
+<!-- #| content: valuebox -->
+<!-- #| title: "Current Flow: Kettle River (08NN013)" -->
+<!-- list( -->
+<!--   icon = "droplet-half", -->
+<!--   color = ifelse(current_kettle_flow < 20, "danger", "primary"), -->
+<!--   value = paste0(current_kettle_flow, " m³/s") -->
+<!-- ) -->
+<!-- #| content: valuebox -->
+<!-- #| title: "Live Data Source" -->
+<!-- list( -->
+<!--   icon = "cloud-arrow-down", -->
+<!--   color = "secondary", -->
+<!--   value = "ECCC Web Service" -->
+<!-- ) -->
+<!-- ``` -->
+<section id="kettle-river---last-30-days-live-telemetry" class="level1">
+<h1>Kettle River - Last 30 Days Live Telemetry</h1>
 <div class="cell">
 <div class="cell-output-display">
-<div>
-<figure class="figure">
-<p><img src="forecasts-na-starts_files/figure-html/unnamed-chunk-1-1.png" class="img-fluid figure-img" width="672"></p>
-</figure>
+<div class="plotly html-widget html-fill-item" id="htmlwidget-1759837d38c6ad496797" style="width:100%;height:464px;"></div>
+<script type="application/json" data-for="htmlwidget-1759837d38c6ad496797">{"x":{"visdat":{"3fb46247410d":["function () ","plotlyVisDat"],"3fb46d2915f8":["function () ","data"]},"cur_data":"3fb46d2915f8","attrs":{"3fb46247410d":{"x":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"y":{},"type":"scatter","mode":"lines","name":"Kettle River (Ferry)","line":{"color":"#1f77b4","width":3},"inherit":true},"3fb46d2915f8":{"x":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"y":{},"type":"scatter","mode":"lines","name":"Boundary Creek (Midway)","line":{"color":"#7f7f7f","width":2,"dash":"dot"},"inherit":true}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"xaxis":{"domain":[0,1],"automargin":true,"title":""},"yaxis":{"domain":[0,1],"automargin":true,"title":"Discharge (m³/s)"},"hovermode":"x unified","legend":{"orientation":"h","x":0.5,"xanchor":"center","y":-0.10000000000000001},"showlegend":true},"source":"A","config":{"modeBarButtonsToAdd":["hoverclosest","hovercompare"],"showSendToCloud":false},"data":[{"x":["2026-04-26","2026-04-27","2026-04-28","2026-04-29","2026-04-30","2026-05-01","2026-05-02","2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-05-07","2026-05-08","2026-05-09","2026-05-10","2026-05-11","2026-05-12","2026-05-13","2026-05-14","2026-05-15","2026-05-16","2026-05-17","2026-05-18","2026-05-19","2026-05-20","2026-05-21","2026-05-22","2026-05-23","2026-05-24","2026-05-25","2026-05-26","2026-05-27","2026-05-28","2026-05-29","2026-05-30","2026-05-31","2026-06-01","2026-06-02","2026-06-03","2026-06-04","2026-06-05","2026-06-06","2026-06-07","2026-06-08","2026-06-09","2026-06-10","2026-06-11","2026-06-12","2026-06-13","2026-06-14","2026-06-15","2026-06-16","2026-06-17","2026-06-18","2026-06-19","2026-06-20","2026-06-21","2026-06-22","2026-06-23","2026-06-24","2026-06-25"],"y":[22.172916666666666,20.331944444444446,19.037152777777777,18.778819444444444,18.990277777777777,20.402430555555554,23.201041666666665,26.337499999999999,30.856249999999999,34.557986111111113,33.843055555555559,33.490972222222226,31.015277777777779,26.690277777777776,23.776388888888889,22.097222222222221,20.396875000000001,19.661458333333332,29.400347222222223,28.183333333333334,21.445138888888888,18.509374999999999,16.564236111111111,15.210069444444445,13.653819444444444,12.765625,12.143402777777778,11.597916666666666,11.874652777777778,12.439236111111111,12.182291666666666,11.99375,12.597916666666666,14.113888888888889,26.438194444444445,18.74861111111111,14.019791666666666,11.827083333333333,10.332152777777777,10.858124999999999,11.69375,9.5940277777777769,9.0862499999999997,8.9194791666666671,8.6963194444444447,10.120277777777778,10.693402777777777,9.8260763888888896,8.6573263888888885,7.9678819444444446,7.34375,6.8692361111111113,6.2965277777777775,5.9040277777777774,5.4828124999999996,5.0631944444444441,4.6674652777777776,4.3510416666666663,4.0643055555555554,3.8087499999999999,3.6133576642335767],"type":"scatter","mode":"lines","name":"Kettle River (Ferry)","line":{"color":"#1f77b4","width":3},"marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)"}},"error_y":{"color":"rgba(31,119,180,1)"},"error_x":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":["2026-04-26","2026-04-27","2026-04-28","2026-04-29","2026-04-30","2026-05-01","2026-05-02","2026-05-03","2026-05-04","2026-05-05","2026-05-06","2026-05-07","2026-05-08","2026-05-09","2026-05-10","2026-05-11","2026-05-12","2026-05-13","2026-05-14","2026-05-15","2026-05-16","2026-05-17","2026-05-18","2026-05-19","2026-05-20","2026-05-21","2026-05-22","2026-05-23","2026-05-24","2026-05-25","2026-05-26","2026-05-27","2026-05-28","2026-05-29","2026-05-30","2026-05-31","2026-06-01","2026-06-02","2026-06-03","2026-06-04","2026-06-05","2026-06-06","2026-06-07","2026-06-08","2026-06-09","2026-06-10","2026-06-11","2026-06-12","2026-06-13","2026-06-14","2026-06-15","2026-06-16","2026-06-17","2026-06-18","2026-06-19","2026-06-20","2026-06-21","2026-06-22","2026-06-23","2026-06-24","2026-06-25"],"y":[66.675347222222229,61.056249999999999,57.671527777777776,56.378472222222221,57.314583333333331,65.041666666666671,75.78958333333334,88.980902777777771,106.83876811594203,117.05902777777777,117.88888888888889,118.94097222222223,115.02430555555556,101.17638888888889,92.963888888888889,86.938541666666666,82.050694444444446,79.279513888888886,99.618055555555557,94.71041666666666,76.499652777777783,66.49166666666666,61.175347222222221,56.603819444444447,52.469097222222224,50.90625,47.944791666666667,47.002083333333331,48.660069444444446,49.624652777777776,48.799999999999997,54.530555555555559,58.288541666666667,59.563541666666666,94.942708333333329,68.106250000000003,54.729166666666664,47.727083333333333,43.07534722222222,42.590625000000003,43.074305555555554,37.419791666666669,35.328472222222224,34.74861111111111,32.474305555555553,39.391666666666666,38.946180555555557,35.327430555555559,31.492013888888888,28.993055555555557,26.697916666666668,25.178832116788321,23.987847222222221,22.421527777777779,20.613541666666666,19.034375000000001,17.59375,16.360416666666666,15.206944444444444,14.092013888888889,13.137362637362637],"type":"scatter","mode":"lines","name":"Boundary Creek (Midway)","line":{"color":"#7f7f7f","width":2,"dash":"dot"},"marker":{"color":"rgba(255,127,14,1)","line":{"color":"rgba(255,127,14,1)"}},"error_y":{"color":"rgba(255,127,14,1)"},"error_x":{"color":"rgba(255,127,14,1)"},"xaxis":"x","yaxis":"y","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.20000000000000001,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
 </div>
 </div>
-</div>
-<section id="canada-housing-starts-saar-totals" class="level2">
-<h2 class="anchored" data-anchor-id="canada-housing-starts-saar-totals">Canada Housing Starts (SAAR) Totals</h2>
-<ul>
-<li>Includes a random walk forecast with drift.</li>
-</ul>
-<div class="cell">
-<div class="cell-output-display">
-<div class="plotly html-widget html-fill-item" id="htmlwidget-18fa14294d8b85808724" style="width:100%;height:464px;"></div>
-<script type="application/json" data-for="htmlwidget-18fa14294d8b85808724">{"x":{"visdat":{"1b9c604e4b0b":["function () ","plotlyVisDat"],"1b9c2a7315ce":["function () ","data"],"1b9c3db633ff":["function () ","data"]},"cur_data":"1b9c3db633ff","attrs":{"1b9c2a7315ce":{"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"x":{},"y":{},"type":"scatter","mode":"lines","name":"Actual","line":{"width":2},"inherit":true},"1b9c3db633ff":{"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"x":{},"y":{},"type":"scatter","mode":"lines","name":"RW + drift","line":{"dash":"dash","width":2},"inherit":true}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"title":{"text":"Total Canadian Housing Starts (SAAR)<br><sup>Last 5 years + RW with drift<\/sup>"},"xaxis":{"domain":[0,1],"automargin":true,"title":""},"yaxis":{"domain":[0,1],"automargin":true,"title":"Starts (thousands, SAAR)"},"legend":{"orientation":"h","x":0,"y":-0.25},"hovermode":"x unified","showlegend":true},"source":"A","config":{"modeBarButtonsToAdd":["hoverclosest","hovercompare"],"showSendToCloud":false},"data":[{"x":["2021-06-01","2021-07-01","2021-08-01","2021-09-01","2021-10-01","2021-11-01","2021-12-01","2022-01-01","2022-02-01","2022-03-01","2022-04-01","2022-05-01","2022-06-01","2022-07-01","2022-08-01","2022-09-01","2022-10-01","2022-11-01","2022-12-01","2023-01-01","2023-02-01","2023-03-01","2023-04-01","2023-05-01","2023-06-01","2023-07-01","2023-08-01","2023-09-01","2023-10-01","2023-11-01","2023-12-01","2024-01-01","2024-02-01","2024-03-01","2024-04-01","2024-05-01","2024-06-01","2024-07-01","2024-08-01","2024-09-01","2024-10-01","2024-11-01","2024-12-01","2025-01-01","2025-02-01","2025-03-01","2025-04-01","2025-05-01","2025-06-01","2025-07-01","2025-08-01","2025-09-01","2025-10-01","2025-11-01","2025-12-01","2026-01-01","2026-02-01","2026-03-01","2026-04-01","2026-05-01"],"y":[253.173,245.24700000000001,230.429,223.00800000000001,213.63499999999999,281.57299999999998,223.79400000000001,203.40700000000001,224.52600000000001,222.357,245.53700000000001,261.75799999999998,255.73500000000001,254.05099999999999,244.17699999999999,272.62,239.54300000000001,236.95099999999999,230.81200000000001,185.178,226.191,193.20500000000001,240.22300000000001,177.334,266.27300000000002,237.65700000000001,235.36799999999999,253.559,252.44,191.19300000000001,238.31299999999999,205.11099999999999,241.11799999999999,220.93799999999999,221.69999999999999,240.90299999999999,228.33799999999999,263.17599999999999,202.47399999999999,214.22800000000001,221.316,242.83699999999999,214.75800000000001,220.297,209.28899999999999,202.249,261.29300000000001,257.69299999999998,262.80099999999999,270.21600000000001,220.255,257.29500000000002,218.21799999999999,240.47399999999999,269.77999999999997,223.71100000000001,237.55199999999999,228.22300000000001,264.72000000000003,247.02000000000001],"type":"scatter","mode":"lines","name":"Actual","line":{"color":"rgba(31,119,180,1)","width":2},"marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)"}},"error_y":{"color":"rgba(31,119,180,1)"},"error_x":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":["2026-06-01","2026-07-01","2026-08-01","2026-09-01","2026-10-01","2026-11-01","2026-12-01","2027-01-01","2027-02-01","2027-03-01","2027-04-01","2027-05-01","2027-06-01","2027-07-01","2027-08-01","2027-09-01","2027-10-01","2027-11-01","2027-12-01","2028-01-01","2028-02-01","2028-03-01","2028-04-01","2028-05-01"],"y":[244.851,242.68199999999999,240.51299999999998,238.34399999999997,236.17499999999995,234.00599999999994,231.83699999999993,229.66799999999992,227.49899999999991,225.3299999999999,223.16099999999989,220.99199999999988,218.82299999999987,216.65399999999985,214.48499999999984,212.31599999999983,210.14699999999982,207.97799999999981,205.8089999999998,203.63999999999979,201.47099999999978,199.30199999999977,197.13299999999975,194.96399999999974],"type":"scatter","mode":"lines","name":"RW + drift","line":{"color":"rgba(255,127,14,1)","dash":"dash","width":2},"marker":{"color":"rgba(255,127,14,1)","line":{"color":"rgba(255,127,14,1)"}},"error_y":{"color":"rgba(255,127,14,1)"},"error_x":{"color":"rgba(255,127,14,1)"},"xaxis":"x","yaxis":"y","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.20000000000000001,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
-</div>
-</div>
-
-
+<!-- # Spatial Planning -->
+<!-- ```{r spatial planning} -->
+<!-- leaflet() %>% -->
+<!--   addProviderTiles(providers$CartoDB.Positron) %>% -->
+<!--   setView(lng = -118.85, lat = 49.05, zoom = 11) %>% -->
+<!--   addPolygons(data = alr_query,  -->
+<!--               color = "#8c564b",  -->
+<!--               weight = 1,  -->
+<!--               fillOpacity = 0.2,  -->
+<!--               popup = ~paste("ALR Parcel ID:", ALC_DOCUMENT_ID)) %>% -->
+<!--   addLegend("bottomright",  -->
+<!--             colors = c("#8c564b"),  -->
+<!--             labels = c("ALR Boundaries (bcdata)"),  -->
+<!--             title = "Land Base") -->
+<!-- ``` -->
 </section>
+<section id="methodology" class="level1">
+<h1>Methodology</h1>
+<ul>
+<li><p>Automated Hydrology: Current flow data is automatically retrieved from the ECCC real-time hydrometric API via the tidyhydat R package.</p></li>
+<li><p>Spatial Data Integrity: Land classification (ALR parcels) is queried directly from the BC Data Catalogue API using the bcdata R package, ensuring models always use the most authoritative and up-to-date regional boundaries.</p></li>
+</ul>
+
+
 </section>
 
 </main> <!-- /main -->
