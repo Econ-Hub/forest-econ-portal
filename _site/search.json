@@ -39,7 +39,7 @@
     "href": "index.html#dashboards",
     "title": "Home",
     "section": "Dashboards",
-    "text": "Dashboards\n\nWater Security\nNear-real-time surface-water monitoring for the West Boundary region, including:\n\ndaily mean discharge from ECCC hydrometric stations\ninteractive 60-day telemetry chart for the Kettle River and Boundary Creek"
+    "text": "Dashboards\n\nWest Boundary Agricultural Water Security\nA pilot dashboard for the RDKB West Boundary planning process (Kettle River watershed, Midway and upstream), including:\n\ncurrent flow status for each monitoring station, scored against decades of record\nan interactive drought view comparing this year’s flow to the historical normal range\na project-area map of stations and communities, plus seasonal climatology"
   },
   {
     "objectID": "index.html#notes-on-methodology",
@@ -54,12 +54,5 @@
     "title": "Home",
     "section": "Site navigation",
     "text": "Site navigation\n\nForecast pages are listed above\nBackground and ownership information is available on the About page"
-  },
-  {
-    "objectID": "water-security.html",
-    "href": "water-security.html",
-    "title": "West Boundary Water Security",
-    "section": "",
-    "text": "Overview\nNear-real-time surface-water monitoring for the West Boundary region. Daily mean discharge is pulled directly from the Environment and Climate Change Canada (ECCC) real-time hydrometric web service via the tidyhydat R package.\n\n\nKettle River — Last 60 Days Live Telemetry\n\n\n\n\n\n\n\n\nMethodology\n\nAutomated Hydrology: Current flow data is automatically retrieved from the ECCC real-time hydrometric API via the tidyhydat R package (parameter 47, discharge, in m³/s).\nSpatial Data Integrity: Land classification (ALR parcels) can be queried directly from the BC Data Catalogue API using the bcdata R package, ensuring models always use the most authoritative and up-to-date regional boundaries."
   }
 ]
