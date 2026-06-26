@@ -1,106 +1,403 @@
 ---
-title: "West Boundary Water Security"
-author: "TPB Economics Team"
+title: "West Boundary Agricultural Water Security"
+subtitle: "Pilot dashboard — Kettle River watershed, Midway and upstream (RDKB Electoral Area E)"
 format:
-  html:
-    toc: true
+  dashboard:
+    theme: cosmo
+    nav-buttons:
+      - icon: info-circle
+        href: "#about-data"
 execute:
   echo: false
   warning: false
   message: false
 ---
 
-# Overview
-
-Near-real-time surface-water monitoring for the West Boundary region. Daily mean
-discharge is pulled directly from the Environment and Climate Change Canada (ECCC)
-real-time hydrometric web service via the [`tidyhydat`](https://docs.ropensci.org/tidyhydat/)
-R package.
-
-```{r}
+```{r setup}
 #| include: false
 
-# 1. LOAD REQUIRED PACKAGES
-library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(lubridate)
 library(plotly)
+library(leaflet)
 library(tidyhydat)
+library(knitr)
 
-# 2. AUTOMATED TELEMETRY INGESTION (SURFACE WATER)
-target_stations <- c("08NN003", "08NN026")
+# ---- Committed historical baselines (precomputed from HYDAT) -----------------
+stations_meta <- read.csv("data/stations.csv", stringsAsFactors = FALSE)
+normals       <- read.csv("data/flow_normals.csv", stringsAsFactors = FALSE)
+monthly       <- read.csv("data/flow_monthly.csv", stringsAsFactors = FALSE)
 
-# Fetch live data from ECCC hydrometric web service. The fetch is wrapped in
-# tryCatch so a temporary network/service outage never breaks the site build.
-live_flow_data <- tryCatch(
+hero_id      <- "08NN026"               # Kettle River near Westbridge (main stem)
+env_stations <- c("08NN026", "08NN003", "08NN015", "08NN019")  # have real records
+ids          <- stations_meta$STATION_NUMBER
+yr           <- year(Sys.Date())
+
+# ---- Live readings (current year to date) -----------------------------------
+# Wrapped in tryCatch so a temporary ECCC outage can never break the build.
+live <- tryCatch(
   realtime_ws(
-    station_number = target_stations,
-    parameters = 47,
-    start_date = Sys.Date() - 60,
-    end_date = Sys.Date()
+    station_number = ids,
+    parameters     = 47,                # discharge, m3/s
+    start_date     = as.Date(paste0(yr, "-01-01")),
+    end_date       = Sys.Date()
   ) %>%
     mutate(Date = as.Date(Date)) %>%
     group_by(STATION_NUMBER, Date) %>%
-    summarize(Daily_Mean_Flow = mean(Value, na.rm = TRUE), .groups = "drop"),
+    summarise(flow = mean(Value, na.rm = TRUE), .groups = "drop"),
   error = function(e) {
     message("Live hydrometric fetch failed: ", conditionMessage(e))
-    tibble(
-      STATION_NUMBER = character(),
-      Date = as.Date(character()),
-      Daily_Mean_Flow = numeric()
-    )
+    NULL
   }
 )
+have_live <- !is.null(live) && nrow(live) > 0
 
-have_data <- nrow(live_flow_data) > 0
-
-kettle_flow   <- live_flow_data %>% filter(STATION_NUMBER == "08NN003")
-boundary_flow <- live_flow_data %>% filter(STATION_NUMBER == "08NN026")
-
-current_kettle_flow <- if (nrow(kettle_flow) > 0) {
-  kettle_flow %>% filter(Date == max(Date)) %>% pull(Daily_Mean_Flow) %>% round(1)
-} else {
-  NA_real_
-}
-```
-
-# Kettle River — Last 60 Days Live Telemetry
-
-```{r}
-#| echo: false
-
-if (have_data) {
-  plot_ly(kettle_flow, x = ~Date) %>%
-    add_lines(
-      y = ~Daily_Mean_Flow,
-      name = "Kettle River (Ferry)",
-      line = list(color = "#1f77b4", width = 3)
-    ) %>%
-    add_lines(
-      data = boundary_flow,
-      y = ~Daily_Mean_Flow,
-      name = "Boundary Creek (Midway)",
-      line = list(color = "#7f7f7f", width = 2, dash = "dot")
-    ) %>%
-    layout(
-      xaxis = list(title = ""),
-      yaxis = list(title = "Discharge (m³/s)"),
-      hovermode = "x unified",
-      legend = list(orientation = "h", x = 0.5, xanchor = "center", y = -0.1)
-    )
-} else {
-  cat(
-    "> Live hydrometric data is temporarily unavailable.",
-    "The chart will populate automatically the next time the site is rebuilt",
-    "with the data service reachable."
+# ---- Classify current flow against the seasonal normal range ----------------
+classify <- function(flow, p10, p25, p50, p75, p90) {
+  dplyr::case_when(
+    is.na(flow) | is.na(p50) ~ NA_character_,
+    flow <  p10  ~ "Severe Low",
+    flow <  p25  ~ "Low",
+    flow <= p75  ~ "Normal",
+    flow <= p90  ~ "Above Normal",
+    TRUE         ~ "High"
   )
 }
+status_levels <- c("Severe Low", "Low", "Normal", "Above Normal", "High")
+status_pal    <- c("Severe Low" = "#d62728", "Low" = "#ff7f0e",
+                   "Normal" = "#2ca02c", "Above Normal" = "#1f77b4",
+                   "High" = "#17becf")
+vb_color      <- c("Severe Low" = "danger", "Low" = "warning", "Normal" = "success",
+                   "Above Normal" = "info", "High" = "primary", "No data" = "secondary")
+
+if (have_live) {
+  current <- live %>%
+    group_by(STATION_NUMBER) %>%
+    arrange(Date) %>%
+    summarise(last_date = last(Date), flow = last(flow), .groups = "drop") %>%
+    mutate(yday = yday(last_date)) %>%
+    left_join(normals, by = c("STATION_NUMBER", "yday")) %>%
+    mutate(status     = classify(flow, p10, p25, p50, p75, p90),
+           pct_median = ifelse(!is.na(p50), 100 * flow / p50, NA_real_)) %>%
+    left_join(stations_meta, by = "STATION_NUMBER")
+} else {
+  current <- stations_meta %>%
+    mutate(last_date = as.Date(NA), flow = NA_real_, yday = NA_integer_,
+           p10 = NA, p25 = NA, p50 = NA, p75 = NA, p90 = NA,
+           status = NA_character_, pct_median = NA_real_)
+}
+
+h <- current %>% filter(STATION_NUMBER == hero_id)
+hflow   <- if (nrow(h)) round(h$flow, 1)        else NA
+hpct    <- if (nrow(h)) round(h$pct_median)     else NA
+hstatus <- if (nrow(h) && !is.na(h$status)) h$status else "No data"
+hdate   <- if (nrow(h)) h$last_date             else NA
+
+n_below <- sum(current$status %in% c("Low", "Severe Low"), na.rm = TRUE)
+n_env   <- sum(!is.na(current$status))
+irrigation_active <- month(Sys.Date()) %in% 4:10
+last_updated <- if (have_live) format(max(live$Date), "%b %d, %Y") else "unavailable"
 ```
 
-# Methodology
+# Current Conditions
 
-+ **Automated Hydrology:** Current flow data is automatically retrieved from the
-  ECCC real-time hydrometric API via the `tidyhydat` R package (parameter 47,
-  discharge, in m³/s).
+## Row {height="22%"}
 
-+ **Spatial Data Integrity:** Land classification (ALR parcels) can be queried
-  directly from the BC Data Catalogue API using the `bcdata` R package, ensuring
-  models always use the most authoritative and up-to-date regional boundaries.
+```{r}
+#| content: valuebox
+#| title: "Kettle R. near Westbridge — flow"
+list(
+  icon  = "droplet-half",
+  color = vb_color[[hstatus]],
+  value = if (is.na(hflow)) "n/a" else paste0(hflow, " m³/s")
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Percent of seasonal median"
+list(
+  icon  = "graph-down-arrow",
+  color = vb_color[[hstatus]],
+  value = if (is.na(hpct)) "n/a" else paste0(hpct, "%")
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Current flow status"
+list(
+  icon  = "exclamation-triangle",
+  color = vb_color[[hstatus]],
+  value = hstatus
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Monitored sites below normal"
+list(
+  icon  = "reception-2",
+  color = if (n_below > 0) "warning" else "success",
+  value = if (n_env == 0) "n/a" else paste0(n_below, " of ", n_env)
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Irrigation season"
+list(
+  icon  = "moisture",
+  color = if (irrigation_active) "primary" else "secondary",
+  value = if (irrigation_active) "Active" else "Off-season"
+)
+```
+
+## Row {height="78%"}
+
+### Column {width="62%"}
+
+```{r}
+#| title: "This year's flow vs. the historical normal range — Kettle River near Westbridge"
+
+env <- normals %>%
+  filter(STATION_NUMBER == hero_id, yday <= 365) %>%
+  arrange(yday) %>%
+  mutate(date = as.Date(yday - 1, origin = paste0(yr, "-01-01")))
+
+cur_line <- if (have_live) {
+  live %>% filter(STATION_NUMBER == hero_id) %>% arrange(Date)
+} else {
+  data.frame(Date = as.Date(character()), flow = numeric())
+}
+
+p <- plot_ly() %>%
+  add_ribbons(data = env, x = ~date, ymin = ~p10, ymax = ~p90,
+              name = "Historical range (10–90%)", line = list(width = 0),
+              fillcolor = "rgba(31,119,180,0.12)", hoverinfo = "skip") %>%
+  add_ribbons(data = env, x = ~date, ymin = ~p25, ymax = ~p75,
+              name = "Typical range (25–75%)", line = list(width = 0),
+              fillcolor = "rgba(31,119,180,0.28)", hoverinfo = "skip") %>%
+  add_lines(data = env, x = ~date, y = ~p50, name = "Median (normal)",
+            line = list(color = "#1f77b4", dash = "dash", width = 2)) %>%
+  add_lines(data = cur_line, x = ~Date, y = ~flow, name = paste(yr, "observed"),
+            line = list(color = "#d62728", width = 3)) %>%
+  layout(
+    yaxis = list(title = "Daily mean discharge (m³/s)"),
+    xaxis = list(title = "", tickformat = "%b"),
+    hovermode = "x unified",
+    legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.08)
+  )
+p
+```
+
+### Column {width="38%"}
+
+```{r}
+#| title: "Project-area monitoring network"
+
+communities <- data.frame(
+  name = c("Midway", "Rock Creek", "Beaverdell", "Bridesville", "Westbridge"),
+  lat  = c(49.0093, 49.0625, 49.4253, 49.0331, 49.1700),
+  lng  = c(-118.7726, -118.9214, -119.0828, -119.1564, -118.9600)
+)
+
+mdat <- current %>%
+  mutate(col = ifelse(is.na(status), "#7f7f7f", status_pal[status]),
+         lab = ifelse(is.na(flow), "no data",
+                      paste0(round(flow, 1), " m³/s")))
+
+leaflet(mdat) %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addLabelOnlyMarkers(
+    data = communities, ~lng, ~lat, label = ~name,
+    labelOptions = labelOptions(noHide = TRUE, direction = "top", textOnly = TRUE,
+      style = list("font-weight" = "600", "color" = "#444", "font-size" = "12px"))
+  ) %>%
+  addCircleMarkers(
+    ~LONGITUDE, ~LATITUDE, radius = 10, color = ~col, weight = 2,
+    stroke = TRUE, fillOpacity = 0.85,
+    label = ~lapply(paste0("<b>", STATION_NAME, "</b>"), htmltools::HTML),
+    popup = ~paste0(
+      "<b>", STATION_NAME, "</b><br>", STATION_NUMBER,
+      "<br>Flow: ", ifelse(is.na(flow), "n/a", paste0(round(flow, 1), " m³/s")),
+      "<br>% of median: ", ifelse(is.na(pct_median), "n/a", paste0(round(pct_median), "%")),
+      "<br>Status: ", ifelse(is.na(status), "no baseline", status)
+    )
+  ) %>%
+  addLegend("bottomright", colors = unname(status_pal),
+            labels = names(status_pal), title = "Flow status", opacity = 0.9)
+```
+
+```{r}
+#| title: "Current status by station"
+
+current %>%
+  arrange(pct_median) %>%
+  transmute(
+    Station = STATION_NAME,
+    `Flow (m³/s)` = round(flow, 1),
+    `% of median` = round(pct_median),
+    Status = ifelse(is.na(status), "no baseline", status)
+  ) %>%
+  kable()
+```
+
+# Seasonal & Drought Risk
+
+## Row
+
+### Column {width="55%"}
+
+```{r}
+#| title: "Monthly flow climatology — Kettle River near Westbridge"
+
+mh <- monthly %>% filter(STATION_NUMBER == hero_id) %>%
+  mutate(month = factor(month.abb[month], levels = month.abb))
+
+cur_month <- if (have_live) {
+  live %>% filter(STATION_NUMBER == hero_id) %>%
+    mutate(month = factor(month.abb[month(Date)], levels = month.abb)) %>%
+    group_by(month) %>% summarise(m = mean(flow), .groups = "drop")
+} else data.frame(month = factor(character(), levels = month.abb), m = numeric())
+
+plot_ly() %>%
+  add_boxplot(data = mh, x = ~month, y = ~monthly_mean, name = "Historical (per year)",
+              boxpoints = FALSE, line = list(color = "#1f77b4"),
+              fillcolor = "rgba(31,119,180,0.25)") %>%
+  add_markers(data = cur_month, x = ~month, y = ~m, name = paste(yr),
+              marker = list(color = "#d62728", size = 11, symbol = "diamond")) %>%
+  layout(yaxis = list(title = "Monthly mean discharge (m³/s)"),
+         xaxis = list(title = ""),
+         legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.1))
+```
+
+### Column {width="45%"}
+
+```{r}
+#| title: "How does each site compare to its seasonal normal?"
+
+bar <- current %>% filter(!is.na(pct_median)) %>% arrange(pct_median)
+
+if (nrow(bar) > 0) {
+  plot_ly(bar, x = ~pct_median, y = ~reorder(STATION_NAME, pct_median),
+          type = "bar", orientation = "h",
+          marker = list(color = status_pal[bar$status]),
+          hovertemplate = "%{y}: %{x:.0f}% of median<extra></extra>") %>%
+    layout(
+      xaxis = list(title = "Current flow as % of seasonal median"),
+      yaxis = list(title = ""),
+      shapes = list(list(type = "line", x0 = 100, x1 = 100, y0 = -0.5,
+                         y1 = nrow(bar) - 0.5, line = list(color = "#444", dash = "dot")))
+    )
+} else {
+  cat("Current comparison unavailable — live data could not be retrieved.")
+}
+```
+
+## Row {height="28%"}
+
+::: {.card title="Why this matters for West Boundary agriculture"}
+Summer is when agricultural water demand peaks and natural supply is lowest. The
+West Boundary has faced repeated drought stress, including the **2021 Temporary
+Protection Order** in the West Kettle watershed that restricted withdrawals.
+
+The envelope chart and the comparisons above put **today's flows in the context
+of decades of record** (48–70 years per main station), so producers and planners
+can quickly see whether the watershed is tracking toward a low-flow year. When
+the red line sits near or below the lower edge of the blue band, the watershed is
+running drier than usual for the season — an early signal for storage,
+conservation, and engagement decisions.
+:::
+
+# Stations & Live Data
+
+## Row {height="40%"}
+
+```{r}
+#| title: "Monitoring stations (Water Survey of Canada)"
+
+stations_meta %>%
+  arrange(STATION_NUMBER) %>%
+  transmute(
+    `Station ID` = STATION_NUMBER,
+    Name = STATION_NAME,
+    `Drainage area (km²)` = round(DRAINAGE_AREA_GROSS),
+    `Record` = ifelse(is.na(start_year), "—", paste0(start_year, "–", end_year)),
+    `Years` = n_years
+  ) %>%
+  kable()
+```
+
+## Row {height="60%"}
+
+```{r}
+#| title: "Daily mean discharge — all monitored sites, current year"
+
+if (have_live) {
+  lab <- setNames(stations_meta$STATION_NAME, stations_meta$STATION_NUMBER)
+  live2 <- live %>% mutate(name = lab[STATION_NUMBER])
+  plot_ly(live2, x = ~Date, y = ~flow, color = ~name, type = "scatter",
+          mode = "lines") %>%
+    layout(yaxis = list(title = "Discharge (m³/s)"), xaxis = list(title = ""),
+           hovermode = "x unified",
+           legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.12))
+} else {
+  cat("Live data could not be retrieved at build time.")
+}
+```
+
+# About & Data {#about-data}
+
+## Row
+
+### Column
+
+::: {.card title="What this dashboard is"}
+A **pilot dashboard** for the RDKB West Boundary Agricultural Water Supply and
+Storage planning process. It brings public hydrometric information together in an
+accessible place to support **planning and community engagement** — helping
+producers, First Nations, local government, and agencies share a common picture
+of seasonal water conditions and drought risk in the Kettle River watershed from
+Midway upstream.
+
+It is **not** a regulatory monitoring tool. Readings are provisional and
+unverified, and should not be used for compliance or enforcement.
+:::
+
+::: {.card title="Data sources & methods"}
+- **Live discharge:** Environment and Climate Change Canada (ECCC) real-time
+  hydrometric web service, retrieved with the open-source
+  [`tidyhydat`](https://docs.ropensci.org/tidyhydat/) R package (parameter 47,
+  daily mean, m³/s).
+- **Historical normals:** Water Survey of Canada **HYDAT** database. For each day
+  of the year we pool all daily flows within a ±7-day window across the full
+  record and compute the 10th–90th percentile envelope and median. Baselines are
+  precomputed by `scripts/build_flow_normals.R` and stored as small CSVs in
+  `/data`, so the published site never needs the full 1.3 GB database.
+- **Status classes:** *Severe Low* (below 10th percentile), *Low* (10th–25th),
+  *Normal* (25th–75th), *Above Normal* (75th–90th), *High* (above 90th).
+:::
+
+### Column
+
+::: {.card title="Confidentiality & responsible use"}
+This dashboard uses **public and voluntarily shared information only**. Should
+producer-contributed inputs (for example well levels, repeat photo points, or
+irrigation timing) be added in future, they would be **aggregated or anonymised**
+so that individual operations cannot be identified, consistent with the project's
+commitment to a transparent, non-regulatory process and with FOIPPA.
+:::
+
+::: {.card title="Ownership, hosting & upkeep"}
+Built entirely with **open-source tools** (Quarto + R) so it can be fully owned,
+hosted, and maintained by the Regional District. All source files, data-build
+scripts, and documentation are included in the project repository. Refreshing the
+historical baselines is a single command (`Rscript scripts/build_flow_normals.R`);
+live readings update automatically each time the site is rebuilt.
+
+*Potential future inputs identified in the RFP — groundwater well levels,
+date-stamped/repeat photo points, and irrigation season timing — can be added as
+additional pages using the same pattern.*
+:::

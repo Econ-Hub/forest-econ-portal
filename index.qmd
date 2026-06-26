@@ -11,10 +11,12 @@ Content is updated regularly and intended for internal use.
 
 ## Dashboards
 
-- **[Water Security](water-security.qmd)**  
-  Near-real-time surface-water monitoring for the West Boundary region, including:
-  - daily mean discharge from ECCC hydrometric stations
-  - interactive 60-day telemetry chart for the Kettle River and Boundary Creek
+- **[West Boundary Agricultural Water Security](water-security.qmd)**  
+  A pilot dashboard for the RDKB West Boundary planning process (Kettle River
+  watershed, Midway and upstream), including:
+  - current flow status for each monitoring station, scored against decades of record
+  - an interactive drought view comparing this year's flow to the historical normal range
+  - a project-area map of stations and communities, plus seasonal climatology
 
 ---
 
