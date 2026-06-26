@@ -1,6 +1,10 @@
 project:
   type: website
   output-dir: _site
+  render:
+    - "index.qmd"
+    - "water-security.qmd"
+    - "about.qmd"
 
 website:
   title: "Forest Economics Portal"
@@ -8,8 +12,6 @@ website:
     left:
       - href: index.qmd
         text: Home
-      - href: forecasts-na-starts.qmd
-        text: NA Starts
       - href: water-security.qmd
         text: Water Security
       - href: about.qmd
