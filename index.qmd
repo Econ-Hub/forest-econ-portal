@@ -22,16 +22,15 @@ engagement only — not for regulatory monitoring**.
 
 The dashboard includes:
 
-- **Current conditions** — live flow status, **% Mean Annual Discharge (MAD)** with
-  conservation/critical thresholds, year-to-date volume deficit, and drought-year
-  comparisons (2021, 2023).
-- **Seasonal & drought risk** — monthly climatology, per-site comparisons, and a
-  **long-term summer low-flow trend**.
-- **Snowpack & water supply** — Grano Creek SWE as a leading indicator for summer
-  supply.
-- **Groundwater & aquifers** — Kettle valley observation wells vs. historical norms.
-- **Agriculture & field observations** — irrigation-season streamflow context (Apr–Oct).
-- **Stations & live data** — the underlying monitoring network.
+- **Current conditions** — live flow status for each monitoring station, scored
+  against decades of record, with a project-area map of stations and communities.
+- **Seasonal & drought risk** — this year's streamflow compared to the historical
+  normal range, monthly climatology, and per-site comparisons.
+- **Snowpack & water supply** — Grano Creek snow water equivalent as a leading
+  indicator for summer supply.
+- **Groundwater & aquifers** — water-table levels at Kettle valley observation
+  wells (Grand Forks, Beaverdell, Midway) versus their historical norms.
+- **Stations & live data** — the underlying monitoring network and live records.
 
 ---
 
