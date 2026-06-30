@@ -1,14 +1,45 @@
-
+---
+title: "About this dashboard"
 ---
 
-## `about.qmd`
+## What this is
 
-```markdown
----
-title: "About"
----
+The **West Boundary Water Security** dashboard is a pilot tool developed to
+support the Regional District of Kootenay Boundary (RDKB) and the KRWAC
+Agriculture and Water Working Group in planning for agricultural water supply and
+storage in the West Boundary (Kettle River watershed, Midway and upstream).
 
-Owner: TPB Economics Team
+Its purpose is to make public water information easy to see and understand, so
+that producers, First Nations, local government, provincial agencies, and other
+water users can share a common picture of seasonal conditions and drought risk.
 
-This site is a static website built with Quarto and deployed from GitHub.
-Access control is applied at the hosting layer (Netlify password protection - free for test versions).
+## Planning and engagement only
+
+This dashboard is for **planning and community engagement purposes only**. It is
+**not** a regulatory or compliance monitoring tool. Live readings are provisional
+and unverified and should not be used for enforcement or for decisions that
+require official, quality-assured data.
+
+## Data sources
+
+- **Streamflow** — Environment and Climate Change Canada (ECCC) real-time
+  hydrometric service and the Water Survey of Canada HYDAT historical database,
+  accessed with the open-source `tidyhydat` R package.
+- **Groundwater** — B.C. Provincial Groundwater Observation Well Network (PGOWN).
+- All data are public and provided under open licences (including the Open
+  Government Licence – British Columbia).
+
+## Privacy and responsible use
+
+The dashboard uses **public and voluntarily shared information only**. If
+producer-contributed inputs are added in future (for example well levels, repeat
+photo points, or irrigation timing), they would be **aggregated or anonymised** so
+that individual operations cannot be identified, consistent with FOIPPA and with
+the project's commitment to a transparent, non-regulatory process.
+
+## Ownership and upkeep
+
+The dashboard is built entirely with open-source tools (Quarto + R) so it can be
+fully owned, hosted, and maintained by the Regional District. Source files,
+data-build scripts, and documentation are included in the project repository, and
+the historical baselines can be refreshed with a single command.

@@ -7,13 +7,14 @@ project:
     - "about.qmd"
 
 website:
-  title: "Forest Economics Portal"
+  title: "West Boundary Water Security"
+  description: "Pilot water-supply dashboard for the RDKB West Boundary (Kettle River watershed)"
   navbar:
     left:
       - href: index.qmd
         text: Home
       - href: water-security.qmd
-        text: Water Security
+        text: Dashboard
       - href: about.qmd
         text: About
 

@@ -18,6 +18,7 @@ execute:
 
 library(dplyr)
 library(tidyr)
+library(readr)
 library(lubridate)
 library(plotly)
 library(leaflet)
@@ -86,6 +87,62 @@ if (have_live) {
     mutate(last_date = as.Date(NA), flow = NA_real_, yday = NA_integer_,
            p10 = NA, p25 = NA, p50 = NA, p75 = NA, p90 = NA,
            status = NA_character_, pct_median = NA_real_)
+}
+
+# ---- Groundwater: B.C. observation wells (PGOWN) ----------------------------
+gw_wells   <- read.csv("data/gw_wells.csv", stringsAsFactors = FALSE)
+gw_normals <- read.csv("data/gw_normals.csv", stringsAsFactors = FALSE)
+gw_base    <- "https://www.env.gov.bc.ca/wsd/data_searches/obswell/map/data/"
+
+read_gw_recent <- function(id) {
+  tryCatch(
+    read_csv(paste0(gw_base, id, "-recent.csv"), show_col_types = FALSE,
+             col_types = cols(Time = col_character(), Value = col_double(),
+                              .default = col_character())) %>%
+      transmute(well = id, Date = as.Date(ymd_hm(Time, quiet = TRUE)), depth = Value) %>%
+      filter(!is.na(Date), !is.na(depth)) %>%
+      group_by(well, Date) %>% summarise(depth = mean(depth), .groups = "drop"),
+    error = function(e) NULL
+  )
+}
+gw_live <- tryCatch(bind_rows(lapply(gw_wells$well, read_gw_recent)),
+                    error = function(e) NULL)
+have_gw <- !is.null(gw_live) && nrow(gw_live) > 0
+
+# For groundwater a LARGER depth-to-water means a LOWER water table (drier),
+# so the percentile comparison is inverted relative to streamflow.
+gw_classify <- function(depth, p10, p25, p50, p75, p90) {
+  dplyr::case_when(
+    is.na(depth) | is.na(p50) ~ NA_character_,
+    depth >  p90 ~ "Severe Low",
+    depth >  p75 ~ "Low",
+    depth >= p25 ~ "Normal",
+    depth >= p10 ~ "Above Normal",
+    TRUE         ~ "High"
+  )
+}
+
+if (have_gw) {
+  gw_current <- gw_live %>%
+    group_by(well) %>% arrange(Date) %>%
+    summarise(last_date = last(Date), depth = last(depth), .groups = "drop") %>%
+    mutate(yday = yday(last_date)) %>%
+    left_join(gw_normals, by = c("well", "yday")) %>%
+    mutate(status = gw_classify(depth, p10, p25, p50, p75, p90)) %>%
+    left_join(gw_wells, by = "well")
+} else {
+  gw_current <- gw_wells %>%
+    mutate(last_date = as.Date(NA), depth = NA_real_, yday = NA_integer_,
+           p10 = NA, p25 = NA, p50 = NA, p75 = NA, p90 = NA, status = NA_character_)
+}
+gw_below <- sum(gw_current$status %in% c("Low", "Severe Low"), na.rm = TRUE)
+gw_n     <- sum(!is.na(gw_current$status))
+
+gw_box <- function(id) {
+  w <- gw_current %>% filter(well == id)
+  st <- if (nrow(w) && !is.na(w$status)) w$status else "No data"
+  list(icon = "moisture", color = vb_color[[st]],
+       value = if (!nrow(w) || is.na(w$depth)) "n/a" else paste0(round(w$depth, 2), " m"))
 }
 
 h <- current %>% filter(STATION_NUMBER == hero_id)
@@ -311,6 +368,104 @@ running drier than usual for the season — an early signal for storage,
 conservation, and engagement decisions.
 :::
 
+# Groundwater & Aquifers
+
+## Row {height="22%"}
+
+```{r}
+#| content: valuebox
+#| title: "Grand Forks well (OW217) — depth to water"
+gw_box("OW217")
+```
+
+```{r}
+#| content: valuebox
+#| title: "Beaverdell well (OW306) — depth to water"
+gw_box("OW306")
+```
+
+```{r}
+#| content: valuebox
+#| title: "Midway well (OW444) — depth to water"
+gw_box("OW444")
+```
+
+```{r}
+#| content: valuebox
+#| title: "Observation wells below normal"
+list(
+  icon  = "reception-2",
+  color = if (gw_below > 0) "warning" else "success",
+  value = if (gw_n == 0) "n/a" else paste0(gw_below, " of ", gw_n)
+)
+```
+
+## Row {height="78%"}
+
+### Column {width="62%"}
+
+```{r}
+#| title: "Water-table depth vs. the historical normal range — Grand Forks (OW217). Lower on the chart = deeper water table = drier."
+
+gw_hero <- "OW217"
+genv <- gw_normals %>%
+  filter(well == gw_hero, yday <= 365) %>%
+  arrange(yday) %>%
+  mutate(date = as.Date(yday - 1, origin = paste0(yr, "-01-01")))
+
+gcur <- if (have_gw) {
+  gw_live %>%
+    filter(well == gw_hero, Date >= as.Date(paste0(yr, "-01-01"))) %>%
+    arrange(Date)
+} else {
+  data.frame(Date = as.Date(character()), depth = numeric())
+}
+
+plot_ly() %>%
+  add_ribbons(data = genv, x = ~date, ymin = ~p10, ymax = ~p90,
+              name = "Historical range (10–90%)", line = list(width = 0),
+              fillcolor = "rgba(44,160,44,0.12)", hoverinfo = "skip") %>%
+  add_ribbons(data = genv, x = ~date, ymin = ~p25, ymax = ~p75,
+              name = "Typical range (25–75%)", line = list(width = 0),
+              fillcolor = "rgba(44,160,44,0.28)", hoverinfo = "skip") %>%
+  add_lines(data = genv, x = ~date, y = ~p50, name = "Median (normal)",
+            line = list(color = "#2ca02c", dash = "dash", width = 2)) %>%
+  add_lines(data = gcur, x = ~Date, y = ~depth, name = paste(yr, "observed"),
+            line = list(color = "#8c564b", width = 3)) %>%
+  layout(
+    yaxis = list(title = "Depth to water below ground (m)", autorange = "reversed"),
+    xaxis = list(title = "", tickformat = "%b"),
+    hovermode = "x unified",
+    legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.08)
+  )
+```
+
+### Column {width="38%"}
+
+```{r}
+#| title: "Observation wells (B.C. PGOWN)"
+
+gw_current %>%
+  transmute(
+    Well = well,
+    Location = location,
+    Aquifer = aquifer,
+    `Depth (m)` = round(depth, 2),
+    Record = ifelse(is.na(start_year), "—", paste0(start_year, "–", end_year)),
+    Status = ifelse(is.na(status), "no baseline", status)
+  ) %>%
+  kable()
+```
+
+::: {.card title="Why groundwater matters here"}
+The Kettle valley aquifers are **strongly connected to the river** — the Grand
+Forks aquifer sits next to the Kettle/Granby confluence and rises and falls with
+the freshet. When both streamflow **and** water tables are running below normal at
+the same time, it points to a basin-wide moisture deficit rather than a local
+blip — an important signal for irrigation timing, storage, and shared
+conservation decisions.
+:::
+
 # Stations & Live Data
 
 ## Row {height="40%"}
@@ -367,17 +522,20 @@ unverified, and should not be used for compliance or enforcement.
 :::
 
 ::: {.card title="Data sources & methods"}
-- **Live discharge:** Environment and Climate Change Canada (ECCC) real-time
+- **Live streamflow:** Environment and Climate Change Canada (ECCC) real-time
   hydrometric web service, retrieved with the open-source
   [`tidyhydat`](https://docs.ropensci.org/tidyhydat/) R package (parameter 47,
   daily mean, m³/s).
-- **Historical normals:** Water Survey of Canada **HYDAT** database. For each day
+- **Streamflow normals:** Water Survey of Canada **HYDAT** database. For each day
   of the year we pool all daily flows within a ±7-day window across the full
   record and compute the 10th–90th percentile envelope and median. Baselines are
   precomputed by `scripts/build_flow_normals.R` and stored as small CSVs in
   `/data`, so the published site never needs the full 1.3 GB database.
-- **Status classes:** *Severe Low* (below 10th percentile), *Low* (10th–25th),
-  *Normal* (25th–75th), *Above Normal* (75th–90th), *High* (above 90th).
+- **Groundwater:** B.C. Provincial Groundwater Observation Well Network (PGOWN),
+  Open Government Licence – B.C. Live readings and historical depth-to-water
+  baselines use the same percentile method (`scripts/build_gw_normals.R`).
+- **Status classes:** *Severe Low* (least water available — below the 10th
+  percentile for the day), then *Low*, *Normal*, *Above Normal*, *High*.
 :::
 
 ### Column
