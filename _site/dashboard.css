@@ -5,21 +5,29 @@
   word-break: break-word;
 }
 
-/* Plotly charts inside dashboard cards need a minimum height or they collapse */
+/* Plotly charts inside dashboard cards — fixed height avoids collapse and scrollbars */
 .quarto-dashboard .bslib-card .card-body {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .quarto-dashboard .bslib-card .card-body > div {
-  flex: 1 1 auto;
-  min-height: 260px;
+  flex: 0 0 auto;
+  min-height: 0;
 }
 
 .quarto-dashboard .bslib-card .card-body .plotly,
 .quarto-dashboard .bslib-card .card-body .js-plotly-plot {
-  height: 280px !important;
-  min-height: 280px;
-  max-height: 280px;
+  height: 235px !important;
+  min-height: 235px;
+  max-height: 235px;
+}
+
+/* Tighter prose cards so explanatory text fits without scrolling */
+.quarto-dashboard .bslib-card .card-body p {
+  font-size: 0.88rem;
+  line-height: 1.4;
+  margin-bottom: 0.4rem;
 }

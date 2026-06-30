@@ -375,7 +375,7 @@ current %>%
 
 # Seasonal & Drought Risk
 
-## Row {height="48%"}
+## Row {height="40%"}
 
 ### Column {width="58%"}
 
@@ -425,11 +425,11 @@ p_month <- ggplot(monthly_env, aes(x = month_num)) +
     plot.margin = margin(4, 8, 4, 4)
   )
 
-ggplotly(p_month, width = NULL, height = 280, tooltip = "none") %>%
+ggplotly(p_month, width = NULL, height = 235, tooltip = "none") %>%
   layout(
     autosize = FALSE,
-    height = 280,
-    margin = list(l = 50, r = 10, t = 28, b = 32),
+    height = 235,
+    margin = list(l = 48, r = 8, t = 24, b = 28),
     annotations = list(
       list(x = 0, y = 1.12, xref = "paper", yref = "paper", xanchor = "left",
            text = "Shaded: 25–75%  |  Dashed: median  |  ◆: current year",
@@ -459,8 +459,8 @@ if (nrow(bar) > 0) {
           hovertemplate = "%{y}: %{x:.0f}% of median<extra></extra>") %>%
     layout(
       autosize = FALSE,
-      height = 280,
-      margin = list(l = 10, r = 15, t = 10, b = 45),
+      height = 235,
+      margin = list(l = 8, r = 12, t = 8, b = 38),
       xaxis = list(title = "Current flow (% of seasonal median)", automargin = TRUE,
                    titlefont = list(size = 10)),
       yaxis = list(title = "", automargin = TRUE, tickfont = list(size = 9)),
@@ -473,22 +473,17 @@ if (nrow(bar) > 0) {
 }
 ```
 
-## Row {height="18%"}
+## Row {height="13%"}
 
 ::: {.card title="Why this matters for West Boundary agriculture"}
 Summer is when agricultural water demand peaks and natural supply is lowest. The
 West Boundary has faced repeated drought stress, including the **2021 Temporary
-Protection Order** in the West Kettle watershed that restricted withdrawals.
-
-The envelope chart and the comparisons above put **today's flows in the context
-of decades of record** (48–70 years per main station), so producers and planners
-can quickly see whether the watershed is tracking toward a low-flow year. When
-the red line sits near or below the lower edge of the blue band, the watershed is
-running drier than usual for the season — an early signal for storage,
-conservation, and engagement decisions.
+Protection Order** in the West Kettle watershed. The charts above put today's
+flows in decades of record so planners can see whether the watershed is tracking
+toward a low-flow year.
 :::
 
-## Row {height="55%"}
+## Row {height="44%"}
 
 ### Column {width="55%"}
 
@@ -504,6 +499,9 @@ plot_ly(sl, x = ~year, y = ~summer_7day_min, type = "scatter", mode = "markers",
   add_lines(x = ~year, y = ~fit, line = list(color = "#d62728", dash = "dash"),
             name = "Linear fit", inherit = TRUE) %>%
   layout(
+    autosize = FALSE,
+    height = 235,
+    margin = list(l = 50, r = 10, t = 36, b = 30),
     yaxis = list(title = "7-day minimum flow (m³/s)"),
     xaxis = list(title = ""),
     annotations = list(
@@ -515,9 +513,10 @@ plot_ly(sl, x = ~year, y = ~summer_7day_min, type = "scatter", mode = "markers",
         "Sen's slope ≈ ", trend_row$sen_slope_m3s_yr[1], " m³/s per year"
       ),
       showarrow = FALSE, align = "left",
-      font = list(size = 11), bgcolor = "rgba(255,255,255,0.85)"
+      font = list(size = 10), bgcolor = "rgba(255,255,255,0.85)"
     )
-  )
+  ) %>%
+  config(displayModeBar = FALSE, responsive = FALSE)
 ```
 
 ### Column {width="45%"}
