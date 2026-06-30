@@ -1,0 +1,24 @@
+/* Value-box values: long status strings (e.g. irrigation season) were overflowing cards */
+.quarto-dashboard .valuebox .value-box-value {
+  font-size: 1.15rem !important;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+/* Plotly charts inside dashboard cards need a minimum height or they collapse */
+.quarto-dashboard .bslib-card .card-body {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.quarto-dashboard .bslib-card .card-body > div {
+  flex: 1 1 auto;
+  min-height: 260px;
+}
+
+.quarto-dashboard .bslib-card .card-body .plotly,
+.quarto-dashboard .bslib-card .card-body .js-plotly-plot {
+  height: 100% !important;
+  min-height: 260px;
+}
