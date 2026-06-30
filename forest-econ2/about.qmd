@@ -1,0 +1,9 @@
+---
+title: "About"
+---
+
+Owner: TPB Economics Team
+
+This is the fresh starting point (`forest-econ2`) for the Forest Economics portal,
+kept separate from the current pilot dashboard while it is built out.
+It is a static website built with Quarto and deployed from GitHub.

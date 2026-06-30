@@ -1,0 +1,21 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "Forest Econ 2"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - href: about.qmd
+        text: About
+
+execute:
+  enabled: true
+  freeze: false
+
+format:
+  html:
+    toc: true
+    theme: cosmo

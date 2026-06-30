@@ -1,0 +1,11 @@
+# R
+.Rhistory
+.RData
+.Rproj.user/
+
+# Quarto
+/.quarto/
+**/*.quarto_ipynb
+_site/
+*_cache/
+*_files/
