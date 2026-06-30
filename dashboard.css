@@ -5,28 +5,42 @@
   word-break: break-word;
 }
 
-/* Plotly charts inside dashboard cards — fixed height avoids collapse and scrollbars */
+/* Default: charts fill their card in the larger dashboard rows */
 .quarto-dashboard .bslib-card .card-body {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 .quarto-dashboard .bslib-card .card-body > div {
-  flex: 0 0 auto;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: 280px;
 }
 
 .quarto-dashboard .bslib-card .card-body .plotly,
 .quarto-dashboard .bslib-card .card-body .js-plotly-plot {
-  height: 235px !important;
-  min-height: 235px;
-  max-height: 235px;
+  height: 100% !important;
+  min-height: 280px;
 }
 
-/* Tighter prose cards so explanatory text fits without scrolling */
-.quarto-dashboard .bslib-card .card-body p {
+/* Seasonal tab only: slightly smaller fixed charts so the page fits without scrolling */
+#seasonal-drought-risk .bslib-card .card-body {
+  overflow: hidden;
+}
+
+#seasonal-drought-risk .bslib-card .card-body > div {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+#seasonal-drought-risk .bslib-card .card-body .plotly,
+#seasonal-drought-risk .bslib-card .card-body .js-plotly-plot {
+  height: 250px !important;
+  min-height: 250px;
+  max-height: 250px;
+}
+
+#seasonal-drought-risk .bslib-card .card-body p {
   font-size: 0.88rem;
   line-height: 1.4;
   margin-bottom: 0.4rem;

@@ -316,8 +316,10 @@ p %>%
     yaxis = list(title = "Daily mean discharge (m³/s)"),
     xaxis = list(title = "", tickformat = "%b"),
     hovermode = "x unified",
-    legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.08)
-  )
+    margin = list(t = 45, r = 10, b = 40, l = 55),
+    legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.14)
+  ) %>%
+  config(displayModeBar = FALSE, responsive = TRUE)
 ```
 
 ### Column {width="38%"}
@@ -425,10 +427,10 @@ p_month <- ggplot(monthly_env, aes(x = month_num)) +
     plot.margin = margin(4, 8, 4, 4)
   )
 
-ggplotly(p_month, width = NULL, height = 235, tooltip = "none") %>%
+ggplotly(p_month, width = NULL, height = 250, tooltip = "none") %>%
   layout(
     autosize = FALSE,
-    height = 235,
+    height = 250,
     margin = list(l = 48, r = 8, t = 24, b = 28),
     annotations = list(
       list(x = 0, y = 1.12, xref = "paper", yref = "paper", xanchor = "left",
@@ -459,7 +461,7 @@ if (nrow(bar) > 0) {
           hovertemplate = "%{y}: %{x:.0f}% of median<extra></extra>") %>%
     layout(
       autosize = FALSE,
-      height = 235,
+      height = 250,
       margin = list(l = 8, r = 12, t = 8, b = 38),
       xaxis = list(title = "Current flow (% of seasonal median)", automargin = TRUE,
                    titlefont = list(size = 10)),
@@ -500,7 +502,7 @@ plot_ly(sl, x = ~year, y = ~summer_7day_min, type = "scatter", mode = "markers",
             name = "Linear fit", inherit = TRUE) %>%
   layout(
     autosize = FALSE,
-    height = 235,
+    height = 250,
     margin = list(l = 50, r = 10, t = 36, b = 30),
     yaxis = list(title = "7-day minimum flow (m³/s)"),
     xaxis = list(title = ""),
