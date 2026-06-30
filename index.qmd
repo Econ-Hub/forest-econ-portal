@@ -30,8 +30,7 @@ The dashboard includes:
 - **Snowpack & water supply** — Grano Creek SWE as a leading indicator for summer
   supply.
 - **Groundwater & aquifers** — Kettle valley observation wells vs. historical norms.
-- **Agriculture & field observations** — irrigation-season context and a pilot
-  concept for voluntary repeat photos and timing notes.
+- **Agriculture & field observations** — irrigation-season streamflow context (Apr–Oct).
 - **Stations & live data** — the underlying monitoring network.
 
 ---

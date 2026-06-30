@@ -1,0 +1,6 @@
+/* Value-box values: long status strings (e.g. irrigation season) were overflowing cards */
+.quarto-dashboard .valuebox .value-box-value {
+  font-size: 1.15rem !important;
+  line-height: 1.25;
+  word-break: break-word;
+}

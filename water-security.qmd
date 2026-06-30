@@ -7,6 +7,7 @@ format:
     nav-buttons:
       - icon: info-circle
         href: "#about-data"
+    css: dashboard.css
 execute:
   echo: false
   warning: false
@@ -298,18 +299,14 @@ p <- plot_ly() %>%
   add_lines(data = env, x = ~date, y = ~p50, name = "Median (normal)",
             line = list(color = "#1f77b4", dash = "dash", width = 2))
 
-if (!is.na(thr_20)) {
-  p <- p %>%
-    add_lines(x = env$date, y = rep(thr_20, nrow(env)), name = "20% MAD (conservation)",
-              line = list(color = "#ff7f0e", dash = "dot", width = 2)) %>%
-    add_lines(x = env$date, y = rep(thr_05, nrow(env)), name = "5% MAD (critical)",
-              line = list(color = "#d62728", dash = "dot", width = 2))
-}
-
 for (ay in sort(unique(analog_plot$analog_year))) {
   ad <- analog_plot %>% filter(analog_year == ay)
-  p <- p %>% add_lines(data = ad, x = ~plot_date, y = ~flow, name = paste(ay, "drought year"),
-                       line = list(width = 1.5, dash = "dash"))
+  p <- p %>% add_lines(
+    data = ad, x = ~plot_date, y = ~flow,
+    name = paste(ay, "drought year"),
+    line = list(width = 1.5, dash = "dash"),
+    visible = "legendonly"
+  )
 }
 
 p %>%
@@ -319,7 +316,7 @@ p %>%
     yaxis = list(title = "Daily mean discharge (m³/s)"),
     xaxis = list(title = "", tickformat = "%b"),
     hovermode = "x unified",
-    legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.15)
+    legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.08)
   )
 ```
 
@@ -385,24 +382,50 @@ current %>%
 ```{r}
 #| title: "Monthly flow climatology — Kettle River near Westbridge"
 
-mh <- monthly %>% filter(STATION_NUMBER == hero_id) %>%
-  mutate(month = factor(month.abb[month], levels = month.abb))
+mh <- monthly %>%
+  filter(STATION_NUMBER == hero_id) %>%
+  mutate(month_num = month, month = factor(month.abb[month], levels = month.abb))
+
+monthly_env <- mh %>%
+  group_by(month) %>%
+  summarise(
+    p25 = quantile(monthly_mean, 0.25, na.rm = TRUE),
+    p50 = quantile(monthly_mean, 0.50, na.rm = TRUE),
+    p75 = quantile(monthly_mean, 0.75, na.rm = TRUE),
+    .groups = "drop"
+  )
 
 cur_month <- if (have_live) {
-  live %>% filter(STATION_NUMBER == hero_id) %>%
-    mutate(month = factor(month.abb[month(Date)], levels = month.abb)) %>%
-    group_by(month) %>% summarise(m = mean(flow), .groups = "drop")
-} else data.frame(month = factor(character(), levels = month.abb), m = numeric())
+  live %>%
+    filter(STATION_NUMBER == hero_id) %>%
+    mutate(month_num = month(Date), month = factor(month.abb[month(Date)], levels = month.abb)) %>%
+    group_by(month, month_num) %>%
+    summarise(m = mean(flow), .groups = "drop") %>%
+    filter(!is.na(m))
+} else {
+  data.frame(month = factor(character(), levels = month.abb), month_num = integer(), m = numeric())
+}
 
 plot_ly() %>%
-  add_boxplot(data = mh, x = ~month, y = ~monthly_mean, name = "Historical (per year)",
-              boxpoints = FALSE, line = list(color = "#1f77b4"),
-              fillcolor = "rgba(31,119,180,0.25)") %>%
-  add_markers(data = cur_month, x = ~month, y = ~m, name = paste(yr),
-              marker = list(color = "#d62728", size = 11, symbol = "diamond")) %>%
-  layout(yaxis = list(title = "Monthly mean discharge (m³/s)"),
-         xaxis = list(title = ""),
-         legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.1))
+  add_ribbons(
+    data = monthly_env, x = ~month, ymin = ~p25, ymax = ~p75,
+    name = "Historical range (25–75%)", line = list(width = 0),
+    fillcolor = "rgba(31,119,180,0.28)", hoverinfo = "skip"
+  ) %>%
+  add_lines(
+    data = monthly_env, x = ~month, y = ~p50, name = "Median (all years)",
+    line = list(color = "#1f77b4", dash = "dash", width = 2)
+  ) %>%
+  add_markers(
+    data = cur_month, x = ~month, y = ~m, name = paste(yr),
+    marker = list(color = "#d62728", size = 10, symbol = "diamond")
+  ) %>%
+  layout(
+    yaxis = list(title = "Monthly mean discharge (m³/s)", automargin = TRUE),
+    xaxis = list(title = "", categoryorder = "array", categoryarray = month.abb),
+    legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.12),
+    margin = list(l = 60, r = 20, t = 30, b = 40)
+  )
 ```
 
 ### Column {width="45%"}
@@ -736,33 +759,21 @@ if (have_live) {
 list(
   icon  = "moisture",
   color = if (irrigation_active) "primary" else "secondary",
-  value = if (irrigation_active) "Active (Apr–Oct)" else "Off-season"
+  value = if (irrigation_active) "Active" else "Off"
 )
 ```
 
 ```{r}
 #| content: valuebox
-#| title: "Current flow vs. irrigation demand"
+#| title: "Flow vs. demand"
 list(
   icon  = "droplet",
   color = vb_color[[hstatus]],
-  value = if (irrigation_active) hstatus else "Off-season"
-)
-```
-
-```{r}
-#| content: valuebox
-#| title: "Field observations (pilot)"
-list(
-  icon  = "camera",
-  color = "secondary",
-  value = "Coming soon"
+  value = if (irrigation_active) hstatus else "Off"
 )
 ```
 
 ## Row {height="78%"}
-
-### Column {width="62%"}
 
 ```{r}
 #| title: "Streamflow through the irrigation window (Apr–Oct) — Kettle River near Westbridge"
@@ -770,68 +781,30 @@ list(
 irr_start <- as.Date(paste0(yr, "-04-01"))
 irr_end   <- as.Date(paste0(yr, "-10-31"))
 
-p_irr <- plot_ly() %>%
-  add_ribbons(data = env %>% filter(date >= irr_start, date <= irr_end),
-              x = ~date, ymin = ~p25, ymax = ~p75,
-              name = "Typical range (irrigation months)", line = list(width = 0),
-              fillcolor = "rgba(44,160,44,0.20)", hoverinfo = "skip") %>%
-  add_lines(data = env %>% filter(date >= irr_start, date <= irr_end),
-            x = ~date, y = ~p50, name = "Median",
-            line = list(color = "#2ca02c", dash = "dash", width = 2))
-
-if (!is.na(thr_20)) {
-  p_irr <- p_irr %>%
-    add_lines(x = env$date[env$date >= irr_start & env$date <= irr_end],
-              y = rep(thr_20, sum(env$date >= irr_start & env$date <= irr_end)),
-              name = "20% MAD threshold",
-              line = list(color = "#ff7f0e", dash = "dot", width = 2))
-}
-
-p_irr %>%
-  add_lines(data = cur_line %>% filter(Date >= irr_start, Date <= irr_end),
-            x = ~Date, y = ~flow, name = paste(yr, "observed"),
-            line = list(color = "#d62728", width = 3)) %>%
+plot_ly() %>%
+  add_ribbons(
+    data = env %>% filter(date >= irr_start, date <= irr_end),
+    x = ~date, ymin = ~p25, ymax = ~p75,
+    name = "Typical range (irrigation months)", line = list(width = 0),
+    fillcolor = "rgba(44,160,44,0.20)", hoverinfo = "skip"
+  ) %>%
+  add_lines(
+    data = env %>% filter(date >= irr_start, date <= irr_end),
+    x = ~date, y = ~p50, name = "Median",
+    line = list(color = "#2ca02c", dash = "dash", width = 2)
+  ) %>%
+  add_lines(
+    data = cur_line %>% filter(Date >= irr_start, Date <= irr_end),
+    x = ~Date, y = ~flow, name = paste(yr, "observed"),
+    line = list(color = "#d62728", width = 3)
+  ) %>%
   layout(
     yaxis = list(title = "Daily mean discharge (m³/s)"),
     xaxis = list(title = "", tickformat = "%b"),
     hovermode = "x unified",
-    legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.1),
-    shapes = list(list(
-      type = "rect", xref = "paper", yref = "paper",
-      x0 = 0, x1 = 1, y0 = 0, y1 = 1,
-      fillcolor = "rgba(44,160,44,0.04)", line = list(width = 0)
-    ))
+    legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.08)
   )
 ```
-
-### Column {width="38%"}
-
-::: {.card title="Voluntary field observations (pilot concept)"}
-The RFP identifies **repeat photo points**, **date-stamped field photos**, and
-**irrigation-season timing** as potential voluntary inputs. This section is a
-placeholder for a future community layer that would:
-
-- Accept **anonymised or aggregated** producer observations only (never
-  individual farm identifiers on a public map).
-- Show **repeat photo points** at agreed locations (e.g. main stem at Westbridge,
-  key tributaries) to document visible low-flow conditions through the season.
-- Log **irrigation start/stop windows** at the area level to contextualise demand
-  against supply — without creating a regulatory record.
-
-*No producer data are displayed yet. This demonstrates how voluntary inputs could
-be integrated alongside public telemetry.*
-:::
-
-::: {.card title="Example observation log (illustrative only)"}
-
-| Date | Location | Observation type | Summary |
-|------|----------|------------------|---------|
-| May 15 | Kettle at Westbridge | Repeat photo | Bank exposed wider than typical for May |
-| Jun 1 | West Kettle tributary | Irrigation timing | Several producers reported early start |
-| Jun 20 | Rock Creek area | Well level (aggregated) | Shallow wells trending 0.3 m below May avg |
-
-*Sample rows only — not live data.*
-:::
 
 # About & Data {#about-data}
 
