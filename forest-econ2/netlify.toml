@@ -1,0 +1,4 @@
+[build]
+  base = "forest-econ2"
+  command = "quarto render"
+  publish = "_site"
