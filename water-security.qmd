@@ -29,6 +29,14 @@ library(knitr)
 stations_meta <- read.csv("data/stations.csv", stringsAsFactors = FALSE)
 normals       <- read.csv("data/flow_normals.csv", stringsAsFactors = FALSE)
 monthly       <- read.csv("data/flow_monthly.csv", stringsAsFactors = FALSE)
+flow_mad      <- read.csv("data/flow_mad.csv", stringsAsFactors = FALSE)
+flow_analog   <- read.csv("data/flow_analog_years.csv", stringsAsFactors = FALSE)
+flow_trend    <- read.csv("data/flow_trend.csv", stringsAsFactors = FALSE)
+flow_summer   <- read.csv("data/flow_summer_low.csv", stringsAsFactors = FALSE)
+snow_station  <- read.csv("data/snow_station.csv", stringsAsFactors = FALSE)
+snow_normals  <- read.csv("data/snow_normals.csv", stringsAsFactors = FALSE)
+snow_cur_wy   <- read.csv("data/snow_current_wy.csv", stringsAsFactors = FALSE) %>%
+  mutate(Date = as.Date(Date))
 
 hero_id      <- "08NN026"               # Kettle River near Westbridge (main stem)
 env_stations <- c("08NN026", "08NN003", "08NN015", "08NN019")  # have real records
@@ -151,6 +159,54 @@ hpct    <- if (nrow(h)) round(h$pct_median)     else NA
 hstatus <- if (nrow(h) && !is.na(h$status)) h$status else "No data"
 hdate   <- if (nrow(h)) h$last_date             else NA
 
+mad_row   <- flow_mad %>% filter(STATION_NUMBER == hero_id)
+mad_val   <- if (nrow(mad_row)) mad_row$mad[1] else NA_real_
+thr_20    <- if (nrow(mad_row)) mad_row$threshold_20pct[1] else NA_real_
+thr_05    <- if (nrow(mad_row)) mad_row$threshold_05pct[1] else NA_real_
+pct_mad   <- if (!is.na(hflow) && !is.na(mad_val)) round(100 * hflow / mad_val) else NA_integer_
+mad_alert <- dplyr::case_when(
+  is.na(pct_mad)           ~ "No data",
+  pct_mad < 5              ~ "Below 5% MAD",
+  pct_mad < 20             ~ "Below 20% MAD",
+  TRUE                     ~ "Above 20% MAD"
+)
+mad_vb <- dplyr::case_when(
+  mad_alert == "Below 5% MAD"  ~ "danger",
+  mad_alert == "Below 20% MAD" ~ "warning",
+  mad_alert == "Above 20% MAD" ~ "success",
+  TRUE                         ~ "secondary"
+)
+
+if (have_live) {
+  cum_df <- live %>%
+    filter(STATION_NUMBER == hero_id) %>%
+    mutate(yday = yday(Date)) %>%
+    left_join(normals %>% filter(STATION_NUMBER == hero_id), by = "yday") %>%
+    filter(!is.na(flow), !is.na(p50))
+  cum_deficit_pct <- if (nrow(cum_df)) {
+    round(100 * (1 - sum(cum_df$flow) / sum(cum_df$p50)), 0)
+  } else NA_integer_
+} else {
+  cum_deficit_pct <- NA_integer_
+}
+
+trend_row <- flow_trend %>% filter(STATION_NUMBER == hero_id)
+
+# Snowpack (Grano Creek 2E07P) — leading indicator for summer supply
+snow_wy <- ifelse(month(Sys.Date()) >= 10, yr + 1L, yr)
+snow_line <- snow_cur_wy %>% arrange(Date)
+snow_last <- if (nrow(snow_line)) snow_line[nrow(snow_line), , drop = FALSE] else NULL
+snow_swe  <- if (!is.null(snow_last)) round(snow_last$swe, 0) else NA_real_
+snow_wyday <- if (!is.null(snow_last)) snow_last$wyday[1] else NA_integer_
+snow_norm_day <- if (!is.na(snow_wyday)) {
+  snow_normals %>% filter(wyday == snow_wyday)
+} else data.frame()
+snow_pct <- if (nrow(snow_norm_day) && !is.na(snow_swe)) {
+  round(100 * snow_swe / snow_norm_day$p50[1])
+} else NA_integer_
+snow_status <- if (is.na(snow_pct)) "No data" else if (snow_pct < 50) "Well below normal" else if (snow_pct < 80) "Below normal" else "Near normal"
+snow_vb <- if (is.na(snow_pct)) "secondary" else if (snow_pct < 50) "danger" else if (snow_pct < 80) "warning" else "success"
+
 n_below <- sum(current$status %in% c("Low", "Severe Low"), na.rm = TRUE)
 n_env   <- sum(!is.na(current$status))
 irrigation_active <- month(Sys.Date()) %in% 4:10
@@ -173,21 +229,31 @@ list(
 
 ```{r}
 #| content: valuebox
-#| title: "Percent of seasonal median"
+#| title: "Percent of Mean Annual Discharge"
 list(
-  icon  = "graph-down-arrow",
-  color = vb_color[[hstatus]],
-  value = if (is.na(hpct)) "n/a" else paste0(hpct, "%")
+  icon  = "speedometer",
+  color = mad_vb,
+  value = if (is.na(pct_mad)) "n/a" else paste0(pct_mad, "% MAD")
 )
 ```
 
 ```{r}
 #| content: valuebox
-#| title: "Current flow status"
+#| title: "Year-to-date volume deficit"
 list(
-  icon  = "exclamation-triangle",
-  color = vb_color[[hstatus]],
-  value = hstatus
+  icon  = "graph-down",
+  color = if (!is.na(cum_deficit_pct) && cum_deficit_pct > 15) "danger" else "warning",
+  value = if (is.na(cum_deficit_pct)) "n/a" else paste0(cum_deficit_pct, "% below normal")
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "MAD conservation trigger"
+list(
+  icon  = "sign-stop",
+  color = mad_vb,
+  value = mad_alert
 )
 ```
 
@@ -198,16 +264,6 @@ list(
   icon  = "reception-2",
   color = if (n_below > 0) "warning" else "success",
   value = if (n_env == 0) "n/a" else paste0(n_below, " of ", n_env)
-)
-```
-
-```{r}
-#| content: valuebox
-#| title: "Irrigation season"
-list(
-  icon  = "moisture",
-  color = if (irrigation_active) "primary" else "secondary",
-  value = if (irrigation_active) "Active" else "Off-season"
 )
 ```
 
@@ -229,6 +285,9 @@ cur_line <- if (have_live) {
   data.frame(Date = as.Date(character()), flow = numeric())
 }
 
+analog_plot <- flow_analog %>%
+  mutate(plot_date = as.Date(yday - 1, origin = paste0(yr, "-01-01")))
+
 p <- plot_ly() %>%
   add_ribbons(data = env, x = ~date, ymin = ~p10, ymax = ~p90,
               name = "Historical range (10–90%)", line = list(width = 0),
@@ -237,16 +296,31 @@ p <- plot_ly() %>%
               name = "Typical range (25–75%)", line = list(width = 0),
               fillcolor = "rgba(31,119,180,0.28)", hoverinfo = "skip") %>%
   add_lines(data = env, x = ~date, y = ~p50, name = "Median (normal)",
-            line = list(color = "#1f77b4", dash = "dash", width = 2)) %>%
+            line = list(color = "#1f77b4", dash = "dash", width = 2))
+
+if (!is.na(thr_20)) {
+  p <- p %>%
+    add_lines(x = env$date, y = rep(thr_20, nrow(env)), name = "20% MAD (conservation)",
+              line = list(color = "#ff7f0e", dash = "dot", width = 2)) %>%
+    add_lines(x = env$date, y = rep(thr_05, nrow(env)), name = "5% MAD (critical)",
+              line = list(color = "#d62728", dash = "dot", width = 2))
+}
+
+for (ay in sort(unique(analog_plot$analog_year))) {
+  ad <- analog_plot %>% filter(analog_year == ay)
+  p <- p %>% add_lines(data = ad, x = ~plot_date, y = ~flow, name = paste(ay, "drought year"),
+                       line = list(width = 1.5, dash = "dash"))
+}
+
+p %>%
   add_lines(data = cur_line, x = ~Date, y = ~flow, name = paste(yr, "observed"),
             line = list(color = "#d62728", width = 3)) %>%
   layout(
     yaxis = list(title = "Daily mean discharge (m³/s)"),
     xaxis = list(title = "", tickformat = "%b"),
     hovermode = "x unified",
-    legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.08)
+    legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.15)
   )
-p
 ```
 
 ### Column {width="38%"}
@@ -296,6 +370,7 @@ current %>%
     Station = STATION_NAME,
     `Flow (m³/s)` = round(flow, 1),
     `% of median` = round(pct_median),
+    `% MAD` = ifelse(STATION_NUMBER == hero_id, pct_mad, NA_integer_),
     Status = ifelse(is.na(status), "no baseline", status)
   ) %>%
   kable()
@@ -367,6 +442,154 @@ the red line sits near or below the lower edge of the blue band, the watershed i
 running drier than usual for the season — an early signal for storage,
 conservation, and engagement decisions.
 :::
+
+## Row {height="55%"}
+
+### Column {width="55%"}
+
+```{r}
+#| title: "Long-term trend — summer low flow (7-day minimum, Jul–Sep)"
+
+sl <- flow_summer %>%
+  mutate(fit = predict(lm(summer_7day_min ~ year, data = flow_summer)))
+
+plot_ly(sl, x = ~year, y = ~summer_7day_min, type = "scatter", mode = "markers",
+        marker = list(color = "#1f77b4", size = 7),
+        hovertemplate = "Year %{x}: %{y:.1f} m³/s<extra></extra>", showlegend = FALSE) %>%
+  add_lines(x = ~year, y = ~fit, line = list(color = "#d62728", dash = "dash"),
+            name = "Linear fit", inherit = TRUE) %>%
+  layout(
+    yaxis = list(title = "7-day minimum flow (m³/s)"),
+    xaxis = list(title = ""),
+    annotations = list(
+      x = 0.02, y = 0.98, xref = "paper", yref = "paper", xanchor = "left",
+      text = paste0(
+        "Mann-Kendall: ", trend_row$direction[1],
+        " (τ = ", trend_row$tau[1],
+        ", p = ", trend_row$p_value[1], ")<br>",
+        "Sen's slope ≈ ", trend_row$sen_slope_m3s_yr[1], " m³/s per year"
+      ),
+      showarrow = FALSE, align = "left",
+      font = list(size = 11), bgcolor = "rgba(255,255,255,0.85)"
+    )
+  )
+```
+
+### Column {width="45%"}
+
+::: {.card title="What the trend means"}
+The **7-day summer low flow** is the metric regulators and drought planners watch
+most closely — it captures the sustained low-water conditions that stress irrigation
+and aquatic habitat.
+
+A **declining long-term trend** in summer lows is consistent with warmer summers,
+earlier snowmelt, and increasing water demand in the West Boundary. It does not
+predict any single year, but it frames why storage, efficiency, and cooperative
+planning matter even in non-drought years.
+:::
+
+# Snowpack & Water Supply
+
+## Row {height="22%"}
+
+```{r}
+#| content: valuebox
+#| title: "Grano Creek SWE (2E07P)"
+list(
+  icon  = "snow",
+  color = snow_vb,
+  value = if (is.na(snow_swe)) "n/a" else paste0(snow_swe, " mm")
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "SWE vs. normal for today"
+list(
+  icon  = "thermometer-snow",
+  color = snow_vb,
+  value = if (is.na(snow_pct)) "n/a" else paste0(snow_pct, "% of median")
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Snowpack status"
+list(
+  icon  = "cloud-snow",
+  color = snow_vb,
+  value = snow_status
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Station elevation"
+list(
+  icon  = "arrow-up",
+  color = "secondary",
+  value = paste0(snow_station$elevation_m[1], " m")
+)
+```
+
+## Row {height="78%"}
+
+### Column {width="62%"}
+
+```{r}
+#| title: "Snow water equivalent vs. historical normal — Grano Creek (leading indicator for summer supply)"
+
+wy_start <- as.Date(paste0(snow_wy - 1L, "-10-01"))
+senv <- snow_normals %>%
+  filter(wyday <= 366) %>%
+  arrange(wyday) %>%
+  mutate(date = as.Date(wyday - 1, origin = wy_start))
+
+scur <- snow_line %>% mutate(date = Date)
+
+plot_ly() %>%
+  add_ribbons(data = senv, x = ~date, ymin = ~p10, ymax = ~p90,
+              name = "Historical SWE range (10–90%)", line = list(width = 0),
+              fillcolor = "rgba(23,190,207,0.15)", hoverinfo = "skip") %>%
+  add_ribbons(data = senv, x = ~date, ymin = ~p25, ymax = ~p75,
+              name = "Typical SWE range (25–75%)", line = list(width = 0),
+              fillcolor = "rgba(23,190,207,0.30)", hoverinfo = "skip") %>%
+  add_lines(data = senv, x = ~date, y = ~p50, name = "Median SWE",
+            line = list(color = "#17becf", dash = "dash", width = 2)) %>%
+  add_lines(data = scur, x = ~date, y = ~swe,
+            name = paste0("WY ", snow_wy, " observed"),
+            line = list(color = "#9467bd", width = 3)) %>%
+  layout(
+    yaxis = list(title = "Snow water equivalent (mm)"),
+    xaxis = list(title = "", tickformat = "%b"),
+    hovermode = "x unified",
+    legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.08)
+  )
+```
+
+### Column {width="38%"}
+
+::: {.card title="Why snowpack matters here"}
+**Grano Creek (2E07P)** is the Boundary Region's only **real-time automated snow
+station** in the Kettle River watershed. Snow that accumulates at elevation is the
+reservoir that feeds spring freshet and summer baseflow — low or early-melting
+snowpack is a **leading indicator** that summer irrigation supply may be tight,
+often months before streamflow hits critical levels.
+
+The RDKB drought updates and provincial snow bulletins use this station to track
+whether the watershed entered the growing season with adequate mountain storage.
+:::
+
+```{r}
+#| title: "Snow station"
+
+data.frame(
+  Station = snow_station$station_name,
+  ID = snow_station$station_id,
+  Elevation = paste0(snow_station$elevation_m, " m"),
+  Record = paste0(snow_station$start_year, "–", snow_station$end_year)
+) %>% kable()
+```
 
 # Groundwater & Aquifers
 
@@ -503,6 +726,113 @@ if (have_live) {
 }
 ```
 
+# Agriculture & Field Observations
+
+## Row {height="22%"}
+
+```{r}
+#| content: valuebox
+#| title: "Irrigation season"
+list(
+  icon  = "moisture",
+  color = if (irrigation_active) "primary" else "secondary",
+  value = if (irrigation_active) "Active (Apr–Oct)" else "Off-season"
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Current flow vs. irrigation demand"
+list(
+  icon  = "droplet",
+  color = vb_color[[hstatus]],
+  value = if (irrigation_active) hstatus else "Off-season"
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Field observations (pilot)"
+list(
+  icon  = "camera",
+  color = "secondary",
+  value = "Coming soon"
+)
+```
+
+## Row {height="78%"}
+
+### Column {width="62%"}
+
+```{r}
+#| title: "Streamflow through the irrigation window (Apr–Oct) — Kettle River near Westbridge"
+
+irr_start <- as.Date(paste0(yr, "-04-01"))
+irr_end   <- as.Date(paste0(yr, "-10-31"))
+
+p_irr <- plot_ly() %>%
+  add_ribbons(data = env %>% filter(date >= irr_start, date <= irr_end),
+              x = ~date, ymin = ~p25, ymax = ~p75,
+              name = "Typical range (irrigation months)", line = list(width = 0),
+              fillcolor = "rgba(44,160,44,0.20)", hoverinfo = "skip") %>%
+  add_lines(data = env %>% filter(date >= irr_start, date <= irr_end),
+            x = ~date, y = ~p50, name = "Median",
+            line = list(color = "#2ca02c", dash = "dash", width = 2))
+
+if (!is.na(thr_20)) {
+  p_irr <- p_irr %>%
+    add_lines(x = env$date[env$date >= irr_start & env$date <= irr_end],
+              y = rep(thr_20, sum(env$date >= irr_start & env$date <= irr_end)),
+              name = "20% MAD threshold",
+              line = list(color = "#ff7f0e", dash = "dot", width = 2))
+}
+
+p_irr %>%
+  add_lines(data = cur_line %>% filter(Date >= irr_start, Date <= irr_end),
+            x = ~Date, y = ~flow, name = paste(yr, "observed"),
+            line = list(color = "#d62728", width = 3)) %>%
+  layout(
+    yaxis = list(title = "Daily mean discharge (m³/s)"),
+    xaxis = list(title = "", tickformat = "%b"),
+    hovermode = "x unified",
+    legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.1),
+    shapes = list(list(
+      type = "rect", xref = "paper", yref = "paper",
+      x0 = 0, x1 = 1, y0 = 0, y1 = 1,
+      fillcolor = "rgba(44,160,44,0.04)", line = list(width = 0)
+    ))
+  )
+```
+
+### Column {width="38%"}
+
+::: {.card title="Voluntary field observations (pilot concept)"}
+The RFP identifies **repeat photo points**, **date-stamped field photos**, and
+**irrigation-season timing** as potential voluntary inputs. This section is a
+placeholder for a future community layer that would:
+
+- Accept **anonymised or aggregated** producer observations only (never
+  individual farm identifiers on a public map).
+- Show **repeat photo points** at agreed locations (e.g. main stem at Westbridge,
+  key tributaries) to document visible low-flow conditions through the season.
+- Log **irrigation start/stop windows** at the area level to contextualise demand
+  against supply — without creating a regulatory record.
+
+*No producer data are displayed yet. This demonstrates how voluntary inputs could
+be integrated alongside public telemetry.*
+:::
+
+::: {.card title="Example observation log (illustrative only)"}
+
+| Date | Location | Observation type | Summary |
+|------|----------|------------------|---------|
+| May 15 | Kettle at Westbridge | Repeat photo | Bank exposed wider than typical for May |
+| Jun 1 | West Kettle tributary | Irrigation timing | Several producers reported early start |
+| Jun 20 | Rock Creek area | Well level (aggregated) | Shallow wells trending 0.3 m below May avg |
+
+*Sample rows only — not live data.*
+:::
+
 # About & Data {#about-data}
 
 ## Row
@@ -526,14 +856,13 @@ unverified, and should not be used for compliance or enforcement.
   hydrometric web service, retrieved with the open-source
   [`tidyhydat`](https://docs.ropensci.org/tidyhydat/) R package (parameter 47,
   daily mean, m³/s).
-- **Streamflow normals:** Water Survey of Canada **HYDAT** database. For each day
-  of the year we pool all daily flows within a ±7-day window across the full
-  record and compute the 10th–90th percentile envelope and median. Baselines are
-  precomputed by `scripts/build_flow_normals.R` and stored as small CSVs in
-  `/data`, so the published site never needs the full 1.3 GB database.
+- **Streamflow normals:** Water Survey of Canada **HYDAT** database, precomputed by
+  `scripts/build_flow_normals.R` and `scripts/build_flow_analytics.R` (MAD
+  thresholds, drought analog years, summer low-flow trend).
 - **Groundwater:** B.C. Provincial Groundwater Observation Well Network (PGOWN),
-  Open Government Licence – B.C. Live readings and historical depth-to-water
-  baselines use the same percentile method (`scripts/build_gw_normals.R`).
+  precomputed by `scripts/build_gw_normals.R`.
+- **Snowpack:** B.C. Automated Snow Weather Station **Grano Creek (2E07P)** via
+  the B.C. Data Catalogue (`scripts/build_snow_normals.R`).
 - **Status classes:** *Severe Low* (least water available — below the 10th
   percentile for the day), then *Low*, *Normal*, *Above Normal*, *High*.
 :::
