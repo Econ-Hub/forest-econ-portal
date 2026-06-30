@@ -1,116 +1,688 @@
-  ---
-title: "West Boundary Water Security"
-author: "Your Name/Portfolio"
+---
+title: "West Boundary Agricultural Water Security"
+subtitle: "Pilot dashboard — Kettle River watershed, Midway and upstream (RDKB Electoral Area E)"
 format:
-dashboard:
-theme: yeti
-orientation: rows
+  dashboard:
+    theme: cosmo
+    nav-buttons:
+      - icon: info-circle
+        href: "#about-data"
 execute:
-echo: false
-warning: false
-message: false
+  echo: false
+  warning: false
+  message: false
 ---
 
-```{r}
+```{r setup}
 #| include: false
-#| echo: false
-# 1. LOAD REQUIRED PACKAGES
-# Ensure you have installed these via: install.packages(c("tidyhydat", "bcdata", "sf", "bcmaps", "tidyverse", "plotly", "leaflet", "bslib"))
-library(tidyverse)
+
+library(dplyr)
+library(tidyr)
+library(readr)
+library(lubridate)
 library(plotly)
 library(leaflet)
-library(bslib)
-library(tidyhydat) 
-library(bcdata)    
-library(sf)
+library(tidyhydat)
+library(knitr)
 
-# 2. AUTOMATED TELEMETRY INGESTION (SURFACE WATER)
-target_stations <- c("08NN003", "08NN026")
+# ---- Committed historical baselines (precomputed from HYDAT) -----------------
+stations_meta <- read.csv("data/stations.csv", stringsAsFactors = FALSE)
+normals       <- read.csv("data/flow_normals.csv", stringsAsFactors = FALSE)
+monthly       <- read.csv("data/flow_monthly.csv", stringsAsFactors = FALSE)
 
-# Fetch live data from ECCC hydrometric web service
-live_flow_data <- realtime_ws(
-  station_number = target_stations,
-  parameters = 47, 
-  start_date = Sys.Date() - 60,
-  end_date = Sys.Date()
-) %>%
-  mutate(Date = as.Date(Date)) %>%
-  group_by(STATION_NUMBER, Date) %>%
-  summarize(Daily_Mean_Flow = mean(Value, na.rm = TRUE), .groups = "drop")
+hero_id      <- "08NN026"               # Kettle River near Westbridge (main stem)
+env_stations <- c("08NN026", "08NN003", "08NN015", "08NN019")  # have real records
+ids          <- stations_meta$STATION_NUMBER
+yr           <- year(Sys.Date())
 
-kettle_flow <- live_flow_data %>% filter(STATION_NUMBER == "08NN003")
-boundary_flow <- live_flow_data %>% filter(STATION_NUMBER == "08NN026")
+# ---- Live readings (current year to date) -----------------------------------
+# Wrapped in tryCatch so a temporary ECCC outage can never break the build.
+live <- tryCatch(
+  realtime_ws(
+    station_number = ids,
+    parameters     = 47,                # discharge, m3/s
+    start_date     = as.Date(paste0(yr, "-01-01")),
+    end_date       = Sys.Date()
+  ) %>%
+    mutate(Date = as.Date(Date)) %>%
+    group_by(STATION_NUMBER, Date) %>%
+    summarise(flow = mean(Value, na.rm = TRUE), .groups = "drop"),
+  error = function(e) {
+    message("Live hydrometric fetch failed: ", conditionMessage(e))
+    NULL
+  }
+)
+have_live <- !is.null(live) && nrow(live) > 0
 
-current_kettle_flow <- kettle_flow %>% filter(Date == max(Date)) %>% pull(Daily_Mean_Flow) %>% round(1)
+# ---- Classify current flow against the seasonal normal range ----------------
+classify <- function(flow, p10, p25, p50, p75, p90) {
+  dplyr::case_when(
+    is.na(flow) | is.na(p50) ~ NA_character_,
+    flow <  p10  ~ "Severe Low",
+    flow <  p25  ~ "Low",
+    flow <= p75  ~ "Normal",
+    flow <= p90  ~ "Above Normal",
+    TRUE         ~ "High"
+  )
+}
+status_levels <- c("Severe Low", "Low", "Normal", "Above Normal", "High")
+status_pal    <- c("Severe Low" = "#d62728", "Low" = "#ff7f0e",
+                   "Normal" = "#2ca02c", "Above Normal" = "#1f77b4",
+                   "High" = "#17becf")
+vb_color      <- c("Severe Low" = "danger", "Low" = "warning", "Normal" = "success",
+                   "Above Normal" = "info", "High" = "primary", "No data" = "secondary")
 
-# 3. SPATIAL DATA INGESTION
-# Query ALR polygons from BC Data Catalogue
-# alr_query <- bcdc_query_geodata("alc-agricultural-land-reserve-polygons") %>%
-#   filter(BBOX(c(-119.0, 49.0, -118.7, 49.2))) %>% 
-#   collect()
+if (have_live) {
+  current <- live %>%
+    group_by(STATION_NUMBER) %>%
+    arrange(Date) %>%
+    summarise(last_date = last(Date), flow = last(flow), .groups = "drop") %>%
+    mutate(yday = yday(last_date)) %>%
+    left_join(normals, by = c("STATION_NUMBER", "yday")) %>%
+    mutate(status     = classify(flow, p10, p25, p50, p75, p90),
+           pct_median = ifelse(!is.na(p50), 100 * flow / p50, NA_real_)) %>%
+    left_join(stations_meta, by = "STATION_NUMBER")
+} else {
+  current <- stations_meta %>%
+    mutate(last_date = as.Date(NA), flow = NA_real_, yday = NA_integer_,
+           p10 = NA, p25 = NA, p50 = NA, p75 = NA, p90 = NA,
+           status = NA_character_, pct_median = NA_real_)
+}
+
+# ---- Groundwater: B.C. observation wells (PGOWN) ----------------------------
+gw_wells   <- read.csv("data/gw_wells.csv", stringsAsFactors = FALSE)
+gw_normals <- read.csv("data/gw_normals.csv", stringsAsFactors = FALSE)
+gw_base    <- "https://www.env.gov.bc.ca/wsd/data_searches/obswell/map/data/"
+
+read_gw_recent <- function(id) {
+  tryCatch(
+    read_csv(paste0(gw_base, id, "-recent.csv"), show_col_types = FALSE,
+             col_types = cols(Time = col_character(), Value = col_double(),
+                              .default = col_character())) %>%
+      transmute(well = id, Date = as.Date(ymd_hm(Time, quiet = TRUE)), depth = Value) %>%
+      filter(!is.na(Date), !is.na(depth)) %>%
+      group_by(well, Date) %>% summarise(depth = mean(depth), .groups = "drop"),
+    error = function(e) NULL
+  )
+}
+gw_live <- tryCatch(bind_rows(lapply(gw_wells$well, read_gw_recent)),
+                    error = function(e) NULL)
+have_gw <- !is.null(gw_live) && nrow(gw_live) > 0
+
+# For groundwater a LARGER depth-to-water means a LOWER water table (drier),
+# so the percentile comparison is inverted relative to streamflow.
+gw_classify <- function(depth, p10, p25, p50, p75, p90) {
+  dplyr::case_when(
+    is.na(depth) | is.na(p50) ~ NA_character_,
+    depth >  p90 ~ "Severe Low",
+    depth >  p75 ~ "Low",
+    depth >= p25 ~ "Normal",
+    depth >= p10 ~ "Above Normal",
+    TRUE         ~ "High"
+  )
+}
+
+if (have_gw) {
+  gw_current <- gw_live %>%
+    group_by(well) %>% arrange(Date) %>%
+    summarise(last_date = last(Date), depth = last(depth), .groups = "drop") %>%
+    mutate(yday = yday(last_date)) %>%
+    left_join(gw_normals, by = c("well", "yday")) %>%
+    mutate(status = gw_classify(depth, p10, p25, p50, p75, p90)) %>%
+    left_join(gw_wells, by = "well")
+} else {
+  gw_current <- gw_wells %>%
+    mutate(last_date = as.Date(NA), depth = NA_real_, yday = NA_integer_,
+           p10 = NA, p25 = NA, p50 = NA, p75 = NA, p90 = NA, status = NA_character_)
+}
+gw_below <- sum(gw_current$status %in% c("Low", "Severe Low"), na.rm = TRUE)
+gw_n     <- sum(!is.na(gw_current$status))
+
+gw_box <- function(id) {
+  w <- gw_current %>% filter(well == id)
+  st <- if (nrow(w) && !is.na(w$status)) w$status else "No data"
+  list(icon = "moisture", color = vb_color[[st]],
+       value = if (!nrow(w) || is.na(w$depth)) "n/a" else paste0(round(w$depth, 2), " m"))
+}
+
+# ---- Snowpack: B.C. Automated Snow Weather Station (Grano Creek 2E07P) -------
+snow_station <- read.csv("data/snow_station.csv", stringsAsFactors = FALSE)
+snow_normals <- read.csv("data/snow_normals.csv", stringsAsFactors = FALSE)
+snow_cur_wy  <- read.csv("data/snow_current_wy.csv", stringsAsFactors = FALSE) %>%
+  mutate(Date = as.Date(Date))
+
+snow_wy   <- ifelse(month(Sys.Date()) >= 10, yr + 1L, yr)
+snow_line <- snow_cur_wy %>% arrange(Date)
+snow_last <- if (nrow(snow_line)) snow_line[nrow(snow_line), , drop = FALSE] else NULL
+snow_swe  <- if (!is.null(snow_last)) round(snow_last$swe, 0) else NA_real_
+snow_wyday <- if (!is.null(snow_last)) snow_last$wyday[1] else NA_integer_
+snow_norm_day <- if (!is.na(snow_wyday)) snow_normals %>% filter(wyday == snow_wyday) else data.frame()
+snow_med <- if (nrow(snow_norm_day)) snow_norm_day$p50[1] else NA_real_
+# Only score against normal during the season when meaningful snow is usually
+# present; outside that (e.g. summer, after melt-out) the watershed is snow-free.
+in_snow_season <- !is.na(snow_med) && snow_med >= 5
+snow_pct <- if (in_snow_season && !is.na(snow_swe)) round(100 * snow_swe / snow_med) else NA_integer_
+snow_status <- if (is.na(snow_swe)) "No data" else if (!in_snow_season) "Snow-free season" else if (snow_pct < 50) "Well below normal" else if (snow_pct < 80) "Below normal" else "Near normal"
+snow_vb <- if (is.na(snow_swe) || !in_snow_season) "secondary" else if (snow_pct < 50) "danger" else if (snow_pct < 80) "warning" else "success"
+snow_pct_label <- if (!in_snow_season) "seasonal low" else if (is.na(snow_pct)) "n/a" else paste0(snow_pct, "% of median")
+
+h <- current %>% filter(STATION_NUMBER == hero_id)
+hflow   <- if (nrow(h)) round(h$flow, 1)        else NA
+hpct    <- if (nrow(h)) round(h$pct_median)     else NA
+hstatus <- if (nrow(h) && !is.na(h$status)) h$status else "No data"
+hdate   <- if (nrow(h)) h$last_date             else NA
+
+n_below <- sum(current$status %in% c("Low", "Severe Low"), na.rm = TRUE)
+n_env   <- sum(!is.na(current$status))
+irrigation_active <- month(Sys.Date()) %in% 4:10
+last_updated <- if (have_live) format(max(live$Date), "%b %d, %Y") else "unavailable"
 ```
 
+# Current Conditions
 
+## Row {height="22%"}
 
-<!-- # Real-Time Telemetry -->
-<!--  ```{r telemetry} -->
+```{r}
+#| content: valuebox
+#| title: "Kettle R. near Westbridge — flow"
+list(
+  icon  = "droplet-half",
+  color = vb_color[[hstatus]],
+  value = if (is.na(hflow)) "n/a" else paste0(hflow, " m³/s")
+)
+```
 
-<!-- #| content: valuebox -->
-<!-- #| title: "Current Flow: Kettle River (08NN013)" -->
-<!-- list( -->
-<!--   icon = "droplet-half", -->
-<!--   color = ifelse(current_kettle_flow < 20, "danger", "primary"), -->
-<!--   value = paste0(current_kettle_flow, " m³/s") -->
-<!-- ) -->
+```{r}
+#| content: valuebox
+#| title: "Percent of seasonal median"
+list(
+  icon  = "graph-down-arrow",
+  color = vb_color[[hstatus]],
+  value = if (is.na(hpct)) "n/a" else paste0(hpct, "%")
+)
+```
 
+```{r}
+#| content: valuebox
+#| title: "Current flow status"
+list(
+  icon  = "exclamation-triangle",
+  color = vb_color[[hstatus]],
+  value = hstatus
+)
+```
 
-<!-- #| content: valuebox -->
-<!-- #| title: "Live Data Source" -->
-<!-- list( -->
-<!--   icon = "cloud-arrow-down", -->
-<!--   color = "secondary", -->
-<!--   value = "ECCC Web Service" -->
-<!-- ) -->
-<!-- ``` -->
+```{r}
+#| content: valuebox
+#| title: "Monitored sites below normal"
+list(
+  icon  = "reception-2",
+  color = if (n_below > 0) "warning" else "success",
+  value = if (n_env == 0) "n/a" else paste0(n_below, " of ", n_env)
+)
+```
 
+```{r}
+#| content: valuebox
+#| title: "Irrigation season"
+list(
+  icon  = "moisture",
+  color = if (irrigation_active) "primary" else "secondary",
+  value = if (irrigation_active) "Active" else "Off-season"
+)
+```
 
+## Row {height="78%"}
 
-# Kettle River - Last 30 Days Live Telemetry
-```{r last 30}
-#| echo: false
+### Column {width="62%"}
 
-plot_ly(kettle_flow, x = ~Date) %>%
-  add_lines(y = ~Daily_Mean_Flow, name = "Kettle River (Ferry)", line = list(color = "#1f77b4", width = 3)) %>%
-  add_lines(data = boundary_flow, y = ~Daily_Mean_Flow, name = "Boundary Creek (Midway)", line = list(color = "#7f7f7f", width = 2, dash = "dot")) %>%
+```{r}
+#| title: "This year's flow vs. the historical normal range — Kettle River near Westbridge"
+
+env <- normals %>%
+  filter(STATION_NUMBER == hero_id, yday <= 365) %>%
+  arrange(yday) %>%
+  mutate(date = as.Date(yday - 1, origin = paste0(yr, "-01-01")))
+
+cur_line <- if (have_live) {
+  live %>% filter(STATION_NUMBER == hero_id) %>% arrange(Date)
+} else {
+  data.frame(Date = as.Date(character()), flow = numeric())
+}
+
+p <- plot_ly() %>%
+  add_ribbons(data = env, x = ~date, ymin = ~p10, ymax = ~p90,
+              name = "Historical range (10–90%)", line = list(width = 0),
+              fillcolor = "rgba(31,119,180,0.12)", hoverinfo = "skip") %>%
+  add_ribbons(data = env, x = ~date, ymin = ~p25, ymax = ~p75,
+              name = "Typical range (25–75%)", line = list(width = 0),
+              fillcolor = "rgba(31,119,180,0.28)", hoverinfo = "skip") %>%
+  add_lines(data = env, x = ~date, y = ~p50, name = "Median (normal)",
+            line = list(color = "#1f77b4", dash = "dash", width = 2)) %>%
+  add_lines(data = cur_line, x = ~Date, y = ~flow, name = paste(yr, "observed"),
+            line = list(color = "#d62728", width = 3)) %>%
   layout(
-    xaxis = list(title = ""),
-    yaxis = list(title = "Discharge (m³/s)"),
+    yaxis = list(title = "Daily mean discharge (m³/s)"),
+    xaxis = list(title = "", tickformat = "%b"),
     hovermode = "x unified",
-    legend = list(orientation = 'h', x = 0.5, xanchor = 'center', y = -0.1)
+    legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.08)
+  )
+p
+```
+
+### Column {width="38%"}
+
+```{r}
+#| title: "Project-area monitoring network"
+
+communities <- data.frame(
+  name = c("Midway", "Rock Creek", "Beaverdell", "Bridesville", "Westbridge"),
+  lat  = c(49.0093, 49.0625, 49.4253, 49.0331, 49.1700),
+  lng  = c(-118.7726, -118.9214, -119.0828, -119.1564, -118.9600)
+)
+
+mdat <- current %>%
+  mutate(col = ifelse(is.na(status), "#7f7f7f", status_pal[status]),
+         lab = ifelse(is.na(flow), "no data",
+                      paste0(round(flow, 1), " m³/s")))
+
+leaflet(mdat) %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addLabelOnlyMarkers(
+    data = communities, ~lng, ~lat, label = ~name,
+    labelOptions = labelOptions(noHide = TRUE, direction = "top", textOnly = TRUE,
+      style = list("font-weight" = "600", "color" = "#444", "font-size" = "12px"))
+  ) %>%
+  addCircleMarkers(
+    ~LONGITUDE, ~LATITUDE, radius = 10, color = ~col, weight = 2,
+    stroke = TRUE, fillOpacity = 0.85,
+    label = ~lapply(paste0("<b>", STATION_NAME, "</b>"), htmltools::HTML),
+    popup = ~paste0(
+      "<b>", STATION_NAME, "</b><br>", STATION_NUMBER,
+      "<br>Flow: ", ifelse(is.na(flow), "n/a", paste0(round(flow, 1), " m³/s")),
+      "<br>% of median: ", ifelse(is.na(pct_median), "n/a", paste0(round(pct_median), "%")),
+      "<br>Status: ", ifelse(is.na(status), "no baseline", status)
+    )
+  ) %>%
+  addLegend("bottomright", colors = unname(status_pal),
+            labels = names(status_pal), title = "Flow status", opacity = 0.9)
+```
+
+```{r}
+#| title: "Current status by station"
+
+current %>%
+  arrange(pct_median) %>%
+  transmute(
+    Station = STATION_NAME,
+    `Flow (m³/s)` = round(flow, 1),
+    `% of median` = round(pct_median),
+    Status = ifelse(is.na(status), "no baseline", status)
+  ) %>%
+  kable()
+```
+
+# Seasonal & Drought Risk
+
+## Row
+
+### Column {width="55%"}
+
+```{r}
+#| title: "Monthly flow climatology — Kettle River near Westbridge"
+
+mh <- monthly %>% filter(STATION_NUMBER == hero_id) %>%
+  mutate(month = factor(month.abb[month], levels = month.abb))
+
+cur_month <- if (have_live) {
+  live %>% filter(STATION_NUMBER == hero_id) %>%
+    mutate(month = factor(month.abb[month(Date)], levels = month.abb)) %>%
+    group_by(month) %>% summarise(m = mean(flow), .groups = "drop")
+} else data.frame(month = factor(character(), levels = month.abb), m = numeric())
+
+plot_ly() %>%
+  add_boxplot(data = mh, x = ~month, y = ~monthly_mean, name = "Historical (per year)",
+              boxpoints = FALSE, line = list(color = "#1f77b4"),
+              fillcolor = "rgba(31,119,180,0.25)") %>%
+  add_markers(data = cur_month, x = ~month, y = ~m, name = paste(yr),
+              marker = list(color = "#d62728", size = 11, symbol = "diamond")) %>%
+  layout(yaxis = list(title = "Monthly mean discharge (m³/s)"),
+         xaxis = list(title = ""),
+         legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.1))
+```
+
+### Column {width="45%"}
+
+```{r}
+#| title: "How does each site compare to its seasonal normal?"
+
+bar <- current %>% filter(!is.na(pct_median)) %>% arrange(pct_median)
+
+if (nrow(bar) > 0) {
+  plot_ly(bar, x = ~pct_median, y = ~reorder(STATION_NAME, pct_median),
+          type = "bar", orientation = "h",
+          marker = list(color = status_pal[bar$status]),
+          hovertemplate = "%{y}: %{x:.0f}% of median<extra></extra>") %>%
+    layout(
+      xaxis = list(title = "Current flow as % of seasonal median"),
+      yaxis = list(title = ""),
+      shapes = list(list(type = "line", x0 = 100, x1 = 100, y0 = -0.5,
+                         y1 = nrow(bar) - 0.5, line = list(color = "#444", dash = "dot")))
+    )
+} else {
+  cat("Current comparison unavailable — live data could not be retrieved.")
+}
+```
+
+## Row {height="28%"}
+
+::: {.card title="Why this matters for West Boundary agriculture"}
+Summer is when agricultural water demand peaks and natural supply is lowest. The
+West Boundary has faced repeated drought stress, including the **2021 Temporary
+Protection Order** in the West Kettle watershed that restricted withdrawals.
+
+The envelope chart and the comparisons above put **today's flows in the context
+of decades of record** (48–70 years per main station), so producers and planners
+can quickly see whether the watershed is tracking toward a low-flow year. When
+the red line sits near or below the lower edge of the blue band, the watershed is
+running drier than usual for the season — an early signal for storage,
+conservation, and engagement decisions.
+:::
+
+# Snowpack & Water Supply
+
+## Row {height="22%"}
+
+```{r}
+#| content: valuebox
+#| title: "Grano Creek SWE (2E07P)"
+list(
+  icon  = "snow",
+  color = snow_vb,
+  value = if (is.na(snow_swe)) "n/a" else paste0(snow_swe, " mm")
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "SWE vs. normal for today"
+list(
+  icon  = "thermometer-snow",
+  color = snow_vb,
+  value = snow_pct_label
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Snowpack status"
+list(
+  icon  = "cloud-snow",
+  color = snow_vb,
+  value = snow_status
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Station elevation"
+list(
+  icon  = "arrow-up",
+  color = "secondary",
+  value = paste0(snow_station$elevation_m[1], " m")
+)
+```
+
+## Row {height="78%"}
+
+### Column {width="62%"}
+
+```{r}
+#| title: "Snow water equivalent vs. historical normal — Grano Creek (leading indicator for summer supply)"
+
+wy_start <- as.Date(paste0(snow_wy - 1L, "-10-01"))
+senv <- snow_normals %>%
+  filter(wyday <= 366) %>%
+  arrange(wyday) %>%
+  mutate(date = as.Date(wyday - 1, origin = wy_start))
+
+scur <- snow_line %>% mutate(date = Date)
+
+plot_ly() %>%
+  add_ribbons(data = senv, x = ~date, ymin = ~p10, ymax = ~p90,
+              name = "Historical SWE range (10–90%)", line = list(width = 0),
+              fillcolor = "rgba(23,190,207,0.15)", hoverinfo = "skip") %>%
+  add_ribbons(data = senv, x = ~date, ymin = ~p25, ymax = ~p75,
+              name = "Typical SWE range (25–75%)", line = list(width = 0),
+              fillcolor = "rgba(23,190,207,0.30)", hoverinfo = "skip") %>%
+  add_lines(data = senv, x = ~date, y = ~p50, name = "Median SWE",
+            line = list(color = "#17becf", dash = "dash", width = 2)) %>%
+  add_lines(data = scur, x = ~date, y = ~swe,
+            name = paste0("WY ", snow_wy, " observed"),
+            line = list(color = "#9467bd", width = 3)) %>%
+  layout(
+    yaxis = list(title = "Snow water equivalent (mm)"),
+    xaxis = list(title = "", tickformat = "%b"),
+    hovermode = "x unified",
+    legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.08)
   )
 ```
 
+### Column {width="38%"}
 
-<!-- # Spatial Planning -->
+::: {.card title="Why snowpack matters here"}
+**Grano Creek (2E07P)** is the Boundary Region's only **real-time automated snow
+station** in the Kettle River watershed. Snow that accumulates at elevation is the
+reservoir that feeds spring freshet and summer baseflow — low or early-melting
+snowpack is a **leading indicator** that summer irrigation supply may be tight,
+often months before streamflow hits critical levels.
 
-<!-- ```{r spatial planning} -->
+The RDKB drought updates and provincial snow bulletins use this station to track
+whether the watershed entered the growing season with adequate mountain storage.
+:::
 
-<!-- leaflet() %>% -->
-<!--   addProviderTiles(providers$CartoDB.Positron) %>% -->
-<!--   setView(lng = -118.85, lat = 49.05, zoom = 11) %>% -->
-<!--   addPolygons(data = alr_query,  -->
-<!--               color = "#8c564b",  -->
-<!--               weight = 1,  -->
-<!--               fillOpacity = 0.2,  -->
-<!--               popup = ~paste("ALR Parcel ID:", ALC_DOCUMENT_ID)) %>% -->
-<!--   addLegend("bottomright",  -->
-<!--             colors = c("#8c564b"),  -->
-<!--             labels = c("ALR Boundaries (bcdata)"),  -->
-<!--             title = "Land Base") -->
-<!-- ``` -->
+```{r}
+#| title: "Snow station"
 
-# Methodology
+data.frame(
+  Station = snow_station$station_name,
+  ID = snow_station$station_id,
+  Elevation = paste0(snow_station$elevation_m, " m"),
+  Record = paste0(snow_station$start_year, "–", snow_station$end_year)
+) %>% kable()
+```
 
-+ Automated Hydrology: Current flow data is automatically retrieved from the ECCC real-time hydrometric API via the tidyhydat R package.
+# Groundwater & Aquifers
 
-+ Spatial Data Integrity: Land classification (ALR parcels) is queried directly from the BC Data Catalogue API using the bcdata R package, ensuring models always use the most authoritative and up-to-date regional boundaries.
+## Row {height="22%"}
+
+```{r}
+#| content: valuebox
+#| title: "Grand Forks well (OW217) — depth to water"
+gw_box("OW217")
+```
+
+```{r}
+#| content: valuebox
+#| title: "Beaverdell well (OW306) — depth to water"
+gw_box("OW306")
+```
+
+```{r}
+#| content: valuebox
+#| title: "Midway well (OW444) — depth to water"
+gw_box("OW444")
+```
+
+```{r}
+#| content: valuebox
+#| title: "Observation wells below normal"
+list(
+  icon  = "reception-2",
+  color = if (gw_below > 0) "warning" else "success",
+  value = if (gw_n == 0) "n/a" else paste0(gw_below, " of ", gw_n)
+)
+```
+
+## Row {height="78%"}
+
+### Column {width="62%"}
+
+```{r}
+#| title: "Water-table depth vs. the historical normal range — Grand Forks (OW217). Lower on the chart = deeper water table = drier."
+
+gw_hero <- "OW217"
+genv <- gw_normals %>%
+  filter(well == gw_hero, yday <= 365) %>%
+  arrange(yday) %>%
+  mutate(date = as.Date(yday - 1, origin = paste0(yr, "-01-01")))
+
+gcur <- if (have_gw) {
+  gw_live %>%
+    filter(well == gw_hero, Date >= as.Date(paste0(yr, "-01-01"))) %>%
+    arrange(Date)
+} else {
+  data.frame(Date = as.Date(character()), depth = numeric())
+}
+
+plot_ly() %>%
+  add_ribbons(data = genv, x = ~date, ymin = ~p10, ymax = ~p90,
+              name = "Historical range (10–90%)", line = list(width = 0),
+              fillcolor = "rgba(44,160,44,0.12)", hoverinfo = "skip") %>%
+  add_ribbons(data = genv, x = ~date, ymin = ~p25, ymax = ~p75,
+              name = "Typical range (25–75%)", line = list(width = 0),
+              fillcolor = "rgba(44,160,44,0.28)", hoverinfo = "skip") %>%
+  add_lines(data = genv, x = ~date, y = ~p50, name = "Median (normal)",
+            line = list(color = "#2ca02c", dash = "dash", width = 2)) %>%
+  add_lines(data = gcur, x = ~Date, y = ~depth, name = paste(yr, "observed"),
+            line = list(color = "#8c564b", width = 3)) %>%
+  layout(
+    yaxis = list(title = "Depth to water below ground (m)", autorange = "reversed"),
+    xaxis = list(title = "", tickformat = "%b"),
+    hovermode = "x unified",
+    legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.08)
+  )
+```
+
+### Column {width="38%"}
+
+```{r}
+#| title: "Observation wells (B.C. PGOWN)"
+
+gw_current %>%
+  transmute(
+    Well = well,
+    Location = location,
+    Aquifer = aquifer,
+    `Depth (m)` = round(depth, 2),
+    Record = ifelse(is.na(start_year), "—", paste0(start_year, "–", end_year)),
+    Status = ifelse(is.na(status), "no baseline", status)
+  ) %>%
+  kable()
+```
+
+::: {.card title="Why groundwater matters here"}
+The Kettle valley aquifers are **strongly connected to the river** — the Grand
+Forks aquifer sits next to the Kettle/Granby confluence and rises and falls with
+the freshet. When both streamflow **and** water tables are running below normal at
+the same time, it points to a basin-wide moisture deficit rather than a local
+blip — an important signal for irrigation timing, storage, and shared
+conservation decisions.
+:::
+
+# Stations & Live Data
+
+## Row {height="40%"}
+
+```{r}
+#| title: "Monitoring stations (Water Survey of Canada)"
+
+stations_meta %>%
+  arrange(STATION_NUMBER) %>%
+  transmute(
+    `Station ID` = STATION_NUMBER,
+    Name = STATION_NAME,
+    `Drainage area (km²)` = round(DRAINAGE_AREA_GROSS),
+    `Record` = ifelse(is.na(start_year), "—", paste0(start_year, "–", end_year)),
+    `Years` = n_years
+  ) %>%
+  kable()
+```
+
+## Row {height="60%"}
+
+```{r}
+#| title: "Daily mean discharge — all monitored sites, current year"
+
+if (have_live) {
+  lab <- setNames(stations_meta$STATION_NAME, stations_meta$STATION_NUMBER)
+  live2 <- live %>% mutate(name = lab[STATION_NUMBER])
+  plot_ly(live2, x = ~Date, y = ~flow, color = ~name, type = "scatter",
+          mode = "lines") %>%
+    layout(yaxis = list(title = "Discharge (m³/s)"), xaxis = list(title = ""),
+           hovermode = "x unified",
+           legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.12))
+} else {
+  cat("Live data could not be retrieved at build time.")
+}
+```
+
+# About & Data {#about-data}
+
+## Row
+
+### Column
+
+::: {.card title="What this dashboard is"}
+A **pilot dashboard** for the RDKB West Boundary Agricultural Water Supply and
+Storage planning process. It brings public hydrometric information together in an
+accessible place to support **planning and community engagement** — helping
+producers, First Nations, local government, and agencies share a common picture
+of seasonal water conditions and drought risk in the Kettle River watershed from
+Midway upstream.
+
+It is **not** a regulatory monitoring tool. Readings are provisional and
+unverified, and should not be used for compliance or enforcement.
+:::
+
+::: {.card title="Data sources & methods"}
+- **Live streamflow:** Environment and Climate Change Canada (ECCC) real-time
+  hydrometric web service, retrieved with the open-source
+  [`tidyhydat`](https://docs.ropensci.org/tidyhydat/) R package (parameter 47,
+  daily mean, m³/s).
+- **Streamflow normals:** Water Survey of Canada **HYDAT** database. For each day
+  of the year we pool all daily flows within a ±7-day window across the full
+  record and compute the 10th–90th percentile envelope and median. Baselines are
+  precomputed by `scripts/build_flow_normals.R` and stored as small CSVs in
+  `/data`, so the published site never needs the full 1.3 GB database.
+- **Groundwater:** B.C. Provincial Groundwater Observation Well Network (PGOWN),
+  Open Government Licence – B.C. Live readings and historical depth-to-water
+  baselines use the same percentile method (`scripts/build_gw_normals.R`).
+- **Snowpack:** B.C. Automated Snow Weather Station **Grano Creek (2E07P)** via
+  the B.C. Data Catalogue, with SWE baselines precomputed by
+  `scripts/build_snow_normals.R`.
+- **Status classes:** *Severe Low* (least water available — below the 10th
+  percentile for the day), then *Low*, *Normal*, *Above Normal*, *High*.
+:::
+
+### Column
+
+::: {.card title="Confidentiality & responsible use"}
+This dashboard uses **public and voluntarily shared information only**. Should
+producer-contributed inputs (for example well levels, repeat photo points, or
+irrigation timing) be added in future, they would be **aggregated or anonymised**
+so that individual operations cannot be identified, consistent with the project's
+commitment to a transparent, non-regulatory process and with FOIPPA.
+:::
+
+::: {.card title="Ownership, hosting & upkeep"}
+Built entirely with **open-source tools** (Quarto + R) so it can be fully owned,
+hosted, and maintained by the Regional District. All source files, data-build
+scripts, and documentation are included in the project repository. Refreshing the
+historical baselines is a single command (`Rscript scripts/build_flow_normals.R`);
+live readings update automatically each time the site is rebuilt.
+
+*Potential future inputs identified in the RFP — groundwater well levels,
+date-stamped/repeat photo points, and irrigation season timing — can be added as
+additional pages using the same pattern.*
+:::

@@ -1,79 +1,72 @@
 [
   {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About this dashboard",
+    "section": "",
+    "text": "The West Boundary Water Security dashboard is a pilot tool developed to support the Regional District of Kootenay Boundary (RDKB) and the KRWAC Agriculture and Water Working Group in planning for agricultural water supply and storage in the West Boundary (Kettle River watershed, Midway and upstream).\nIts purpose is to make public water information easy to see and understand, so that producers, First Nations, local government, provincial agencies, and other water users can share a common picture of seasonal conditions and drought risk."
+  },
+  {
+    "objectID": "about.html#what-this-is",
+    "href": "about.html#what-this-is",
+    "title": "About this dashboard",
+    "section": "",
+    "text": "The West Boundary Water Security dashboard is a pilot tool developed to support the Regional District of Kootenay Boundary (RDKB) and the KRWAC Agriculture and Water Working Group in planning for agricultural water supply and storage in the West Boundary (Kettle River watershed, Midway and upstream).\nIts purpose is to make public water information easy to see and understand, so that producers, First Nations, local government, provincial agencies, and other water users can share a common picture of seasonal conditions and drought risk."
+  },
+  {
+    "objectID": "about.html#planning-and-engagement-only",
+    "href": "about.html#planning-and-engagement-only",
+    "title": "About this dashboard",
+    "section": "Planning and engagement only",
+    "text": "Planning and engagement only\nThis dashboard is for planning and community engagement purposes only. It is not a regulatory or compliance monitoring tool. Live readings are provisional and unverified and should not be used for enforcement or for decisions that require official, quality-assured data."
+  },
+  {
+    "objectID": "about.html#data-sources",
+    "href": "about.html#data-sources",
+    "title": "About this dashboard",
+    "section": "Data sources",
+    "text": "Data sources\n\nStreamflow — Environment and Climate Change Canada (ECCC) real-time hydrometric service and the Water Survey of Canada HYDAT historical database, accessed with the open-source tidyhydat R package.\nGroundwater — B.C. Provincial Groundwater Observation Well Network (PGOWN).\nAll data are public and provided under open licences (including the Open Government Licence – British Columbia)."
+  },
+  {
+    "objectID": "about.html#privacy-and-responsible-use",
+    "href": "about.html#privacy-and-responsible-use",
+    "title": "About this dashboard",
+    "section": "Privacy and responsible use",
+    "text": "Privacy and responsible use\nThe dashboard uses public and voluntarily shared information only. If producer-contributed inputs are added in future (for example well levels, repeat photo points, or irrigation timing), they would be aggregated or anonymised so that individual operations cannot be identified, consistent with FOIPPA and with the project’s commitment to a transparent, non-regulatory process."
+  },
+  {
+    "objectID": "about.html#ownership-and-upkeep",
+    "href": "about.html#ownership-and-upkeep",
+    "title": "About this dashboard",
+    "section": "Ownership and upkeep",
+    "text": "Ownership and upkeep\nThe dashboard is built entirely with open-source tools (Quarto + R) so it can be fully owned, hosted, and maintained by the Regional District. Source files, data-build scripts, and documentation are included in the project repository, and the historical baselines can be refreshed with a single command."
+  },
+  {
     "objectID": "index.html",
     "href": "index.html",
-    "title": "Home",
-    "section": "",
-    "text": "This site hosts internal forecasts and exploratory analysis for the economics group.\nContent is updated regularly and intended for internal use."
-  },
-  {
-    "objectID": "index.html#forest-economics-forecast-portal",
-    "href": "index.html#forest-economics-forecast-portal",
-    "title": "Home",
-    "section": "",
-    "text": "This site hosts internal forecasts and exploratory analysis for the economics group.\nContent is updated regularly and intended for internal use."
-  },
-  {
-    "objectID": "index.html#forecast-dashboards",
-    "href": "index.html#forecast-dashboards",
-    "title": "Home",
-    "section": "Forecast dashboards",
-    "text": "Forecast dashboards\n\nNA Starts\nCanadian housing starts (SAAR) by dwelling type, including:\n\nlast 5 years of history\nsimple random walk with drift forecast\ninteractive chart for total starts"
-  },
-  {
-    "objectID": "index.html#notes-on-methodology",
-    "href": "index.html#notes-on-methodology",
-    "title": "Home",
-    "section": "Notes on methodology",
-    "text": "Notes on methodology\nForecasts on this site are intentionally lightweight and transparent. Where applicable, we use simple time-series benchmarks (e.g. random walk variants) to provide context rather than precise prediction."
-  },
-  {
-    "objectID": "index.html#site-navigation",
-    "href": "index.html#site-navigation",
-    "title": "Home",
-    "section": "Site navigation",
-    "text": "Site navigation\n\nForecast pages are listed above\nBackground and ownership information is available on the About page"
-  },
-  {
-    "objectID": "about.html#about.qmd",
-    "href": "about.html#about.qmd",
-    "title": "Forest Economics Portal",
-    "section": "about.qmd",
-    "text": "about.qmd"
-  },
-  {
-    "objectID": "about.html#markdown",
-    "href": "about.html#markdown",
-    "title": "Forest Economics Portal",
-    "section": "```markdown",
-    "text": "```markdown"
-  },
-  {
-    "objectID": "about.html#title-about",
-    "href": "about.html#title-about",
-    "title": "Forest Economics Portal",
-    "section": "title: “About”",
-    "text": "title: “About”\nOwner: TPB Economics Team\nThis site is a static website built with Quarto and deployed from GitHub. Access control is applied at the hosting layer (Netlify password protection - free for test versions)."
-  },
-  {
-    "objectID": "forecasts-na-starts.html",
-    "href": "forecasts-na-starts.html",
-    "title": "NA Starts",
-    "section": "",
-    "text": "Includes a random walk forecast with drift."
-  },
-  {
-    "objectID": "forecasts-na-starts.html#canada-housing-starts-saar-totals",
-    "href": "forecasts-na-starts.html#canada-housing-starts-saar-totals",
-    "title": "NA Starts",
-    "section": "",
-    "text": "Includes a random walk forecast with drift."
-  },
-  {
-    "objectID": "water-security.html",
-    "href": "water-security.html",
     "title": "West Boundary Water Security",
     "section": "",
-    "text": "Kettle River - Last 30 Days Live Telemetry\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nMethodology\n\nAutomated Hydrology: Current flow data is automatically retrieved from the ECCC real-time hydrometric API via the tidyhydat R package.\nSpatial Data Integrity: Land classification (ALR parcels) is queried directly from the BC Data Catalogue API using the bcdata R package, ensuring models always use the most authoritative and up-to-date regional boundaries."
+    "text": "This site is a pilot dashboard supporting agricultural water supply and storage planning in the RDKB West Boundary — the Kettle River watershed from Midway upstream (Electoral Area E), including the communities of Baldy, Beaverdell, Bridesville, Midway, and Rock Creek.\nIt brings public water information together in one accessible place to help producers, First Nations, local government, and agencies share a common picture of seasonal water conditions and drought risk. It is intended for planning and engagement only — not for regulatory monitoring."
+  },
+  {
+    "objectID": "index.html#a-pilot-water-supply-dashboard-for-the-west-boundary",
+    "href": "index.html#a-pilot-water-supply-dashboard-for-the-west-boundary",
+    "title": "West Boundary Water Security",
+    "section": "",
+    "text": "This site is a pilot dashboard supporting agricultural water supply and storage planning in the RDKB West Boundary — the Kettle River watershed from Midway upstream (Electoral Area E), including the communities of Baldy, Beaverdell, Bridesville, Midway, and Rock Creek.\nIt brings public water information together in one accessible place to help producers, First Nations, local government, and agencies share a common picture of seasonal water conditions and drought risk. It is intended for planning and engagement only — not for regulatory monitoring."
+  },
+  {
+    "objectID": "index.html#open-the-dashboard",
+    "href": "index.html#open-the-dashboard",
+    "title": "West Boundary Water Security",
+    "section": "Open the dashboard",
+    "text": "Open the dashboard\n→ West Boundary Water Security dashboard\nThe dashboard includes:\n\nCurrent conditions — live flow status for each monitoring station, scored against decades of record, with a project-area map of stations and communities.\nSeasonal & drought risk — this year’s streamflow compared to the historical normal range, monthly climatology, and per-site comparisons.\nSnowpack & water supply — Grano Creek snow water equivalent as a leading indicator for summer supply.\nGroundwater & aquifers — water-table levels at Kettle valley observation wells (Grand Forks, Beaverdell, Midway) versus their historical norms.\nStations & live data — the underlying monitoring network and live records."
+  },
+  {
+    "objectID": "index.html#how-it-works",
+    "href": "index.html#how-it-works",
+    "title": "West Boundary Water Security",
+    "section": "How it works",
+    "text": "How it works\nThe dashboard combines live readings with decades of historical record to show whether the watershed is tracking wetter or drier than normal for the time of year. All information is public and openly licensed, and the whole tool is built with open-source software so it can be fully owned and maintained by the Regional District. See the About page for data sources and responsible-use notes."
   }
 ]

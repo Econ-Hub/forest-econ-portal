@@ -1,33 +1,44 @@
 ---
-title: "Home"
+title: "West Boundary Water Security"
 ---
 
-## Forest Economics Forecast Portal
+## A pilot water-supply dashboard for the West Boundary
 
-This site hosts internal forecasts and exploratory analysis for the economics group.  
-Content is updated regularly and intended for internal use.
+This site is a **pilot dashboard** supporting agricultural water supply and
+storage planning in the **RDKB West Boundary** — the Kettle River watershed from
+Midway upstream (Electoral Area E), including the communities of Baldy,
+Beaverdell, Bridesville, Midway, and Rock Creek.
 
----
-
-## Forecast dashboards
-
-- **[NA Starts](forecasts-na-starts.qmd)**  
-  Canadian housing starts (SAAR) by dwelling type, including:
-  - last 5 years of history
-  - simple random walk with drift forecast
-  - interactive chart for total starts
+It brings public water information together in one accessible place to help
+producers, First Nations, local government, and agencies share a common picture
+of seasonal water conditions and drought risk. It is intended for **planning and
+engagement only — not for regulatory monitoring**.
 
 ---
 
-## Notes on methodology
+## Open the dashboard
 
-Forecasts on this site are intentionally lightweight and transparent.
-Where applicable, we use simple time-series benchmarks (e.g. random walk variants)
-to provide context rather than precise prediction.
+**[→ West Boundary Water Security dashboard](water-security.qmd)**
+
+The dashboard includes:
+
+- **Current conditions** — live flow status for each monitoring station, scored
+  against decades of record, with a project-area map of stations and communities.
+- **Seasonal & drought risk** — this year's streamflow compared to the historical
+  normal range, monthly climatology, and per-site comparisons.
+- **Snowpack & water supply** — Grano Creek snow water equivalent as a leading
+  indicator for summer supply.
+- **Groundwater & aquifers** — water-table levels at Kettle valley observation
+  wells (Grand Forks, Beaverdell, Midway) versus their historical norms.
+- **Stations & live data** — the underlying monitoring network and live records.
 
 ---
 
-## Site navigation
+## How it works
 
-- Forecast pages are listed above
-- Background and ownership information is available on the **About** page
+The dashboard combines **live readings** with **decades of historical record** to
+show whether the watershed is tracking wetter or drier than normal for the time of
+year. All information is **public and openly licensed**, and the whole tool is
+built with open-source software so it can be fully owned and maintained by the
+Regional District. See the **About** page for data sources and responsible-use
+notes.

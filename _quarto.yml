@@ -1,17 +1,20 @@
 project:
   type: website
   output-dir: _site
+  render:
+    - "index.qmd"
+    - "water-security.qmd"
+    - "about.qmd"
 
 website:
-  title: "Forest Economics Portal"
+  title: "West Boundary Water Security"
+  description: "Pilot water-supply dashboard for the RDKB West Boundary (Kettle River watershed)"
   navbar:
     left:
       - href: index.qmd
         text: Home
-      - href: forecasts-na-starts.qmd
-        text: NA Starts
       - href: water-security.qmd
-        text: Water Security
+        text: Dashboard
       - href: about.qmd
         text: About
 
