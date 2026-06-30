@@ -375,7 +375,9 @@ current %>%
 
 # Seasonal & Drought Risk
 
-## Row {height="42%"}
+## Row {height="48%"}
+
+### Column {width="58%"}
 
 ```{r}
 #| title: "Monthly flow climatology — Kettle River near Westbridge"
@@ -411,52 +413,61 @@ p_month <- ggplot(monthly_env, aes(x = month_num)) +
   geom_line(aes(y = p50), color = "#1f77b4", linewidth = 0.9, linetype = "dashed") +
   geom_point(
     data = cur_month, aes(y = m),
-    color = "#d62728", size = 3.5, shape = 18
+    color = "#d62728", size = 3, shape = 18
   ) +
   scale_x_continuous(breaks = 1:12, labels = month.abb, expand = expansion(mult = 0.02)) +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.08))) +
   labs(x = NULL, y = "Monthly mean discharge (m³/s)") +
-  theme_minimal(base_size = 13) +
+  theme_minimal(base_size = 11) +
   theme(
     panel.grid.minor = element_blank(),
     legend.position = "none",
-    plot.margin = margin(8, 12, 8, 8)
+    plot.margin = margin(4, 8, 4, 4)
   )
 
-ggplotly(p_month, height = 300, tooltip = "none") %>%
+ggplotly(p_month, width = NULL, height = 280, tooltip = "none") %>%
   layout(
-    margin = list(l = 55, r = 15, t = 10, b = 35),
-    legend = list(orientation = "h", x = 0.5, xanchor = "center", y = 1.15),
+    autosize = FALSE,
+    height = 280,
+    margin = list(l = 50, r = 10, t = 28, b = 32),
     annotations = list(
-      list(x = 0.02, y = 1.08, xref = "paper", yref = "paper", xanchor = "left",
-           text = "Shaded: historical 25–75%  |  Dashed: median  |  ◆: current year",
-           showarrow = FALSE, font = list(size = 10, color = "#555"))
+      list(x = 0, y = 1.12, xref = "paper", yref = "paper", xanchor = "left",
+           text = "Shaded: 25–75%  |  Dashed: median  |  ◆: current year",
+           showarrow = FALSE, font = list(size = 9, color = "#555"))
     )
   ) %>%
-  config(displayModeBar = FALSE, responsive = TRUE)
+  config(displayModeBar = FALSE, responsive = FALSE)
 ```
 
-## Row {height="28%"}
+### Column {width="42%"}
 
 ```{r}
 #| title: "How does each site compare to its seasonal normal?"
 
-bar <- current %>% filter(!is.na(pct_median)) %>% arrange(pct_median)
+bar <- current %>%
+  filter(!is.na(pct_median)) %>%
+  mutate(
+  label = gsub(" NEAR ", "<br>NEAR ", STATION_NAME),
+  label = gsub(" AT ", "<br>AT ", label)
+) %>%
+  arrange(pct_median)
 
 if (nrow(bar) > 0) {
-  plot_ly(bar, x = ~pct_median, y = ~reorder(STATION_NAME, pct_median),
+  plot_ly(bar, x = ~pct_median, y = ~reorder(label, pct_median),
           type = "bar", orientation = "h",
           marker = list(color = status_pal[bar$status]),
           hovertemplate = "%{y}: %{x:.0f}% of median<extra></extra>") %>%
     layout(
-      height = 220,
-      margin = list(l = 10, r = 20, t = 10, b = 40),
-      xaxis = list(title = "Current flow as % of seasonal median", automargin = TRUE),
-      yaxis = list(title = "", automargin = TRUE),
+      autosize = FALSE,
+      height = 280,
+      margin = list(l = 10, r = 15, t = 10, b = 45),
+      xaxis = list(title = "Current flow (% of seasonal median)", automargin = TRUE,
+                   titlefont = list(size = 10)),
+      yaxis = list(title = "", automargin = TRUE, tickfont = list(size = 9)),
       shapes = list(list(type = "line", x0 = 100, x1 = 100, y0 = -0.5,
                          y1 = nrow(bar) - 0.5, line = list(color = "#444", dash = "dot")))
     ) %>%
-    config(displayModeBar = FALSE, responsive = TRUE)
+    config(displayModeBar = FALSE, responsive = FALSE)
 } else {
   cat("Current comparison unavailable — live data could not be retrieved.")
 }

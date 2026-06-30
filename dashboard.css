@@ -19,6 +19,7 @@
 
 .quarto-dashboard .bslib-card .card-body .plotly,
 .quarto-dashboard .bslib-card .card-body .js-plotly-plot {
-  height: 100% !important;
-  min-height: 260px;
+  height: 280px !important;
+  min-height: 280px;
+  max-height: 280px;
 }
